@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 5.2 Episodic Memory | ⬜ available | Ready to start |
+| 5.3 Strategy Memory | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 5.3 Strategy Memory | ⬜ available | Can start in parallel |
+| 6.0 Game Selection | ⬜ available | Can start in parallel |
 
 ## Completed
 
@@ -34,6 +34,7 @@
 | 4.2 Decision Engine | cloud-agent-f931 |
 | 4.3 Main Agent Loop | cloud-agent-f931 |
 | 5.1 Game State Persistence | cloud-agent-f931 |
+| 5.2 Episodic Memory | cloud-agent-f931 |
 
 ---
 
