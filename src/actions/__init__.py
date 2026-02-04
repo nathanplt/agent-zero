@@ -2,10 +2,11 @@
 
 This package provides:
 - MouseController: Human-like mouse movement and clicks
-- Keyboard control (future)
+- KeyboardController: Human-like keyboard input with natural timing
 - Action executor (future)
 """
 
+from src.actions.keyboard import KeyboardController
 from src.actions.mouse import MouseController
 
-__all__ = ["MouseController"]
+__all__ = ["KeyboardController", "MouseController"]
