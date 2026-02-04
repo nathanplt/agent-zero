@@ -5,7 +5,7 @@
 | Feature | Status | Agent |
 |---------|--------|-------|
 | 2.3 UI Element Detection | available | - |
-| 2.4 LLM Vision Integration | available | - |
+| 2.4 LLM Vision Integration | in progress | cloud-agent-eff4 |
 
 ## Completed
 
