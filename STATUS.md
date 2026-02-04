@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 6.0 Game Selection | ⬜ available | Ready to start |
+| 6.1 Goal Hierarchy | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 6.0 Game Selection | ⬜ available | Can start in parallel |
+| 6.1 Goal Hierarchy | ⬜ available | 0.3, 5.1 |
 
 ## Completed
 
@@ -36,6 +36,7 @@
 | 5.1 Game State Persistence | cloud-agent-f931 |
 | 5.2 Episodic Memory | cloud-agent-f931 |
 | 5.3 Strategy Memory | cursor-agent |
+| 6.0 Game Selection | cursor-agent |
 
 ---
 
