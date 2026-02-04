@@ -50,7 +50,7 @@ class LLMVisionError(Exception):
 # Default prompt template for game state extraction
 DEFAULT_PROMPT_TEMPLATE = """Analyze this game screenshot and extract the game state information.
 
-You are an expert at understanding game UIs, particularly incremental/idle games. 
+You are an expert at understanding game UIs, particularly incremental/idle games.
 Extract the following information from the screenshot:
 
 1. **Current Screen Type**: Identify what type of screen is shown (main, menu, shop, inventory, settings, loading, dialog, prestige, or unknown)
@@ -84,7 +84,7 @@ Be precise with coordinates and numbers. If you're unsure about something, use r
 """
 
 SOM_PROMPT_ADDITION = """
-The screenshot has been annotated with numbered markers (Set-of-Mark). 
+The screenshot has been annotated with numbered markers (Set-of-Mark).
 Each marker is shown as a colored circle with a number.
 When identifying UI elements, include the mark_id that corresponds to each element.
 This helps ensure accurate element identification and click targeting.
@@ -136,6 +136,7 @@ def add_set_of_mark(
     ]
 
     # Try to load a font, fall back to default
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
     except OSError:
@@ -361,10 +362,10 @@ class LLMVision:
         """
         try:
             import anthropic
-        except ImportError:
+        except ImportError as e:
             raise LLMVisionError(
                 "anthropic package not installed. Install with: pip install anthropic"
-            )
+            ) from e
 
         try:
             client = anthropic.Anthropic(api_key=self._api_key)
@@ -393,8 +394,12 @@ class LLMVision:
                 ],
             )
 
-            # Extract text content
-            response_text = message.content[0].text
+            # Extract text content from response
+            content_block = message.content[0]
+            if hasattr(content_block, "text"):
+                response_text = content_block.text
+            else:
+                raise LLMVisionError("Unexpected response format from Anthropic API")
 
             # Parse JSON from response
             return self._parse_json_response(response_text)
@@ -417,10 +422,10 @@ class LLMVision:
         """
         try:
             import openai
-        except ImportError:
+        except ImportError as e:
             raise LLMVisionError(
                 "openai package not installed. Install with: pip install openai"
-            )
+            ) from e
 
         try:
             client = openai.OpenAI(api_key=self._api_key)
@@ -449,6 +454,8 @@ class LLMVision:
 
             # Extract text content
             response_text = response.choices[0].message.content
+            if response_text is None:
+                raise LLMVisionError("OpenAI returned empty response")
 
             # Parse JSON from response
             return self._parse_json_response(response_text)
@@ -484,7 +491,11 @@ class LLMVision:
         text = text.strip()
 
         try:
-            return json.loads(text)
+            result = json.loads(text)
+            if not isinstance(result, dict):
+                logger.warning(f"JSON response is not a dict: {type(result)}")
+                return {}
+            return dict(result)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse JSON response: {e}")
             logger.debug(f"Response text: {text[:500]}")
@@ -510,14 +521,15 @@ class LLMVision:
             current_screen = ScreenType.UNKNOWN
 
         # Parse resources
-        resources = {}
+        resources: dict[str, Resource] = {}
         raw_resources = data.get("resources", {})
         if isinstance(raw_resources, dict):
             for name, res_data in raw_resources.items():
                 if isinstance(res_data, dict):
                     try:
+                        res_name = res_data.get("name") or name
                         resources[name] = Resource(
-                            name=res_data.get("name", name),
+                            name=str(res_name),
                             amount=float(res_data.get("amount", 0)),
                             max_amount=res_data.get("max_amount"),
                             rate=res_data.get("rate"),
@@ -679,19 +691,6 @@ class LLMVision:
 
         # Add markers to image
         marked_image = add_set_of_mark(screenshot.image, regions)
-
-        # Create a temporary screenshot with marked image
-        buffer = BytesIO()
-        marked_image.save(buffer, format="PNG")
-        marked_bytes = buffer.getvalue()
-
-        marked_screenshot = Screenshot(
-            image=marked_image,
-            raw_bytes=marked_bytes,
-            timestamp=screenshot.timestamp,
-            width=screenshot.width,
-            height=screenshot.height,
-        )
 
         # Convert to base64
         image_base64 = self._image_to_base64(marked_image)
