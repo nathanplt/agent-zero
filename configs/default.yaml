@@ -1,0 +1,45 @@
+# AgentZero Default Configuration
+# Environment variables override these values using AGENTZERO_ prefix
+# Example: AGENTZERO_AGENT__LOOP_RATE=5 overrides agent.loop_rate
+
+# Agent settings
+agent:
+  loop_rate: 10  # Iterations per second
+  max_retries: 3
+  timeout: 30  # seconds
+
+# Environment settings
+environment:
+  display_width: 1920
+  display_height: 1080
+  virtual_display: ":99"
+
+# Vision settings
+vision:
+  capture_fps: 10
+  buffer_size: 10
+  ocr_enabled: true
+
+# LLM settings
+llm:
+  provider: "anthropic"  # or "openai"
+  model: "claude-3-sonnet-20240229"
+  max_tokens: 4096
+  temperature: 0.7
+
+# Memory settings
+memory:
+  database_path: "data/memory.db"
+  max_episodes: 10000
+
+# Observer settings
+observer:
+  host: "0.0.0.0"
+  port: 8080
+  stream_fps: 10
+
+# Logging settings
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/agent.log"
