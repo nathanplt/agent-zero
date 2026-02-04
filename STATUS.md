@@ -4,7 +4,8 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 2.4 LLM Vision Integration | available | - |
+| 3.1 Mouse Control | available | - |
+| 3.2 Keyboard Control | available | - |
 
 ## Completed
 
@@ -19,10 +20,11 @@
 | 2.1 Screenshot Capture | cloud-agent-dc56 |
 | 2.2 OCR System | cloud-agent-dc56 |
 | 2.3 UI Element Detection | cloud-agent-dc56 |
+| 2.4 LLM Vision Integration | cloud-agent-eff4 |
 
 ---
 
-**Sprint 2 In Progress** - Vision system development underway. Feature 2.4 (LLM Vision) is the last feature in Sprint 2.
+**Sprint 2 Complete** - All Vision features are done. Sprint 3 (Actions) features are now available.
 
 **Instructions for agents**: 
 - Claim a feature by changing status to `in progress` and adding your identifier
