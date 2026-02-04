@@ -4,7 +4,6 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 1.4 Roblox Authentication | available | - |
 | 3.3 Action Executor & Input Backend | available | - |
 | 4.1 Observation Pipeline | available | - |
 | 5.1 Game State Persistence | available | - |
@@ -19,6 +18,7 @@
 | 1.1 Container Definition | claude-agent |
 | 1.2 Browser Runtime | claude-agent |
 | 1.3 Environment Manager | claude-agent |
+| 1.4 Roblox Authentication | cloud-agent-f931 |
 | 2.1 Screenshot Capture | cloud-agent-dc56 |
 | 2.2 OCR System | cloud-agent-dc56 |
 | 2.3 UI Element Detection | cloud-agent-dc56 |
