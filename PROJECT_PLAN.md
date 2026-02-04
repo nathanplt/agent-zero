@@ -1,4 +1,4 @@
-# AgentZero: Roblox Game Agent - Project Plan
+# Agent Zero: Roblox Game Agent - Project Plan
 
 > **Goal**: Build an autonomous agent that plays Roblox incremental games to completion, running on its own isolated environment with user observability.
 
@@ -224,14 +224,14 @@ PASS: Round-trip produces equal objects
 
 **Testing Strategy**:
 ```
-TEST: docker build -t agentzero .
+TEST: docker build -t agent-zero .
 PASS: Build completes without errors
 
-TEST: docker run agentzero xeyes &
+TEST: docker run agent-zero xeyes &
       Connect via VNC to container:5900
 PASS: xeyes window visible in VNC
 
-TEST: docker run agentzero python --version
+TEST: docker run agent-zero python --version
 PASS: Python 3.11+ version printed
 ```
 

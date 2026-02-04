@@ -1,10 +1,10 @@
 #!/bin/bash
-# AgentZero Container Entrypoint
+# Agent Zero Container Entrypoint
 # Starts virtual display, VNC server, and then runs the provided command
 
 set -e
 
-echo "AgentZero Container Starting..."
+echo "Agent Zero Container Starting..."
 echo "================================"
 
 # Start the display services

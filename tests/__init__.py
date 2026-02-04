@@ -1,1 +1,1 @@
-"""Test suite for AgentZero."""
+"""Test suite for Agent Zero."""

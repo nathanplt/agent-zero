@@ -1,0 +1,84 @@
+---
+description: Interface conventions for Agent Zero components
+globs: ["src/interfaces/**/*.py"]
+---
+
+# Interface Conventions
+
+## Abstract Base Classes
+
+All component interfaces are defined as ABCs:
+
+```python
+from abc import ABC, abstractmethod
+from typing import Optional
+from src.models import GameState, Observation
+
+class VisionSystem(ABC):
+    """Interface for the vision system component."""
+    
+    @abstractmethod
+    def capture(self) -> bytes:
+        """Capture a screenshot from the virtual display.
+        
+        Returns:
+            Raw screenshot bytes in PNG format.
+        """
+        ...
+    
+    @abstractmethod
+    def extract_state(self, screenshot: bytes) -> GameState:
+        """Extract game state from a screenshot.
+        
+        Args:
+            screenshot: Raw screenshot bytes.
+            
+        Returns:
+            Structured game state.
+        """
+        ...
+```
+
+## Interface Design Principles
+
+1. **Single Responsibility** - Each interface does one thing well
+2. **Clear Contracts** - Methods have explicit inputs/outputs via type hints
+3. **Docstrings Required** - Every method explains what it does
+4. **No Implementation Details** - Interfaces don't expose how, only what
+
+## Standard Interfaces
+
+| Interface | Purpose | Location |
+|-----------|---------|----------|
+| `VisionSystem` | Screen capture and understanding | `vision.py` |
+| `ActionExecutor` | Mouse/keyboard control | `actions.py` |
+| `MemoryStore` | State persistence | `memory.py` |
+| `StrategyEngine` | Decision making | `strategy.py` |
+| `EnvironmentManager` | Container lifecycle | `environment.py` |
+| `CommunicationServer` | User streaming/control | `communication.py` |
+
+## Implementing Interfaces
+
+When implementing an interface:
+
+```python
+from src.interfaces import VisionSystem
+from src.models import GameState
+
+class ScreenVision(VisionSystem):
+    """Production implementation of vision system."""
+    
+    def capture(self) -> bytes:
+        # Implementation here
+        ...
+    
+    def extract_state(self, screenshot: bytes) -> GameState:
+        # Implementation here
+        ...
+```
+
+## Cross-Component Communication
+
+- Components communicate via interfaces, never direct imports
+- Use dependency injection for flexibility
+- Data passed between components uses models from `src/models/`

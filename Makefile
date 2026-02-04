@@ -4,11 +4,11 @@
 PYTHON ?= python3
 
 # Docker image name
-DOCKER_IMAGE ?= agentzero
+DOCKER_IMAGE ?= agent-zero
 
 # Help target
 help:
-	@echo "AgentZero Development Commands"
+	@echo "Agent Zero Development Commands"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install      Install production dependencies"

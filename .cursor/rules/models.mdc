@@ -1,0 +1,97 @@
+---
+description: Pydantic model conventions for Agent Zero
+globs: ["src/models/**/*.py"]
+---
+
+# Model Conventions
+
+## Pydantic Best Practices
+
+### Model Definition
+```python
+from pydantic import BaseModel, Field
+from datetime import datetime
+
+class GameState(BaseModel):
+    """Game state captured from screen observation."""
+    
+    model_config = {"frozen": True}  # Immutable by default
+    
+    resources: dict[str, float] = Field(
+        default_factory=dict,
+        description="Current resource amounts"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.now,
+        description="When state was captured"
+    )
+```
+
+### Field Descriptions
+Always include descriptions for documentation:
+```python
+amount: float = Field(..., description="Resource amount", ge=0)
+```
+
+### Validation
+Use Pydantic validators for complex rules:
+```python
+from pydantic import field_validator
+
+class Point(BaseModel):
+    x: int
+    y: int
+    
+    @field_validator("x", "y")
+    @classmethod
+    def must_be_positive(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Coordinates must be non-negative")
+        return v
+```
+
+### Computed Properties
+Use `@property` for derived values:
+```python
+class UIElement(BaseModel):
+    x: int
+    y: int
+    width: int
+    height: int
+    
+    @property
+    def center(self) -> tuple[int, int]:
+        return (self.x + self.width // 2, self.y + self.height // 2)
+```
+
+## Model Categories
+
+### Data Transfer Objects (DTOs)
+- Immutable (`frozen=True`)
+- Used for passing data between components
+- Examples: `GameState`, `Observation`, `Decision`
+
+### Action Objects
+- Represent commands to execute
+- Use factory methods for common patterns:
+```python
+@classmethod
+def click(cls, x: int, y: int) -> "Action":
+    return cls(type=ActionType.CLICK, target=Point(x=x, y=y))
+```
+
+### Configuration Objects
+- Loaded from YAML/environment
+- Have sensible defaults
+- Located in `src/config/`
+
+## Serialization
+
+Models should round-trip through JSON:
+```python
+# Serialize
+json_data = model.model_dump_json()
+
+# Deserialize
+restored = MyModel.model_validate_json(json_data)
+```

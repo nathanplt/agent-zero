@@ -1,4 +1,4 @@
-"""Shared data models for AgentZero.
+"""Shared data models for Agent Zero.
 
 All models use Pydantic for validation and serialization.
 """

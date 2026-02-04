@@ -1,0 +1,96 @@
+---
+description: Docker and container conventions for Agent Zero
+globs: ["Dockerfile", "docker-compose.yml", "docker/**/*"]
+---
+
+# Docker Conventions
+
+## Container Architecture
+
+The Agent Zero container provides:
+- **Virtual Display**: Xvfb on `:99` (1920x1080x24)
+- **VNC Server**: x11vnc on port 5900 for debugging
+- **Window Manager**: fluxbox for app compatibility
+- **Python 3.11+**: With all project dependencies
+
+## Dockerfile Guidelines
+
+### Base Image
+Use official Python slim images:
+```dockerfile
+FROM python:3.11-slim-bookworm
+```
+
+### Environment Variables
+```dockerfile
+ENV DISPLAY=:99 \
+    DISPLAY_WIDTH=1920 \
+    DISPLAY_HEIGHT=1080 \
+    DISPLAY_DEPTH=24
+```
+
+### Health Checks
+Always include health checks:
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD xdpyinfo -display :99 >/dev/null 2>&1 || exit 1
+```
+
+## docker-compose.yml
+
+### Service Definition
+```yaml
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5900:5900"  # VNC
+    volumes:
+      - ./configs:/app/configs:ro
+    shm_size: 2gb  # Required for browser
+```
+
+### Resource Limits
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 4G
+    reservations:
+      memory: 1G
+```
+
+## Startup Scripts
+
+### entrypoint.sh
+- Starts display services via `start-display.sh`
+- Waits for display to be ready
+- Runs the provided command
+
+### start-display.sh
+- Starts Xvfb with configured resolution
+- Starts fluxbox window manager
+- Starts x11vnc for VNC access
+
+## Commands
+
+```bash
+make docker-build      # Build the image
+make docker-run        # Run with VNC exposed
+make docker-test       # Run container tests
+docker-compose up -d   # Start in background
+docker-compose logs -f # Follow logs
+```
+
+## Debugging
+
+Connect to the container's display via VNC:
+```bash
+# macOS
+open vnc://localhost:5900
+
+# Linux
+vncviewer localhost:5900
+```

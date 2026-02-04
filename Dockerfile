@@ -1,4 +1,4 @@
-# AgentZero Container
+# Agent Zero Container
 # Provides a graphical environment for running the Roblox game agent
 #
 # Features:
@@ -83,4 +83,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Default entrypoint starts the display and runs the agent
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["python", "-c", "print('AgentZero container ready. Override CMD to run your command.')"]
+CMD ["python", "-c", "print('Agent Zero container ready. Override CMD to run your command.')"]

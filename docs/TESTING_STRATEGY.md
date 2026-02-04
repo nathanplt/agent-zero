@@ -261,7 +261,7 @@ def test_action_types():
 def test_container_builds():
     """Docker container builds successfully."""
     result = subprocess.run(
-        ["docker", "build", "-t", "agentzero-test", "."],
+        ["docker", "build", "-t", "agent-zero-test", "."],
         capture_output=True,
         timeout=300
     )
@@ -270,7 +270,7 @@ def test_container_builds():
 def test_virtual_display_starts():
     """Virtual display (Xvfb) starts in container."""
     result = subprocess.run(
-        ["docker", "run", "--rm", "agentzero-test", 
+        ["docker", "run", "--rm", "agent-zero-test", 
          "xdpyinfo", "-display", ":99"],
         capture_output=True
     )
@@ -281,7 +281,7 @@ def test_graphical_app_runs():
     """Graphical application runs in container."""
     # xeyes is a simple X11 app
     result = subprocess.run(
-        ["docker", "run", "--rm", "-d", "agentzero-test",
+        ["docker", "run", "--rm", "-d", "agent-zero-test",
          "timeout", "5", "xeyes"],
         capture_output=True
     )
@@ -679,7 +679,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build container
-        run: docker build -t agentzero .
+        run: docker build -t agent-zero .
       - name: Run integration tests
         run: make test-integration
 

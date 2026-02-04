@@ -123,7 +123,7 @@ class TestContainerBuild:
         """Build the container and return the result."""
         project_root = Path(__file__).parent.parent
         result = subprocess.run(
-            ["docker", "build", "-t", "agentzero-test", "."],
+            ["docker", "build", "-t", "agent-zero-test", "."],
             cwd=project_root,
             capture_output=True,
             text=True,
@@ -147,7 +147,7 @@ class TestContainerRuntime:
 
         # Build first
         subprocess.run(
-            ["docker", "build", "-t", "agentzero-test", "."],
+            ["docker", "build", "-t", "agent-zero-test", "."],
             cwd=project_root,
             capture_output=True,
             timeout=300,
@@ -155,7 +155,7 @@ class TestContainerRuntime:
 
         # Run container in background
         result = subprocess.run(
-            ["docker", "run", "-d", "--rm", "agentzero-test", "sleep", "60"],
+            ["docker", "run", "-d", "--rm", "agent-zero-test", "sleep", "60"],
             capture_output=True,
             text=True,
         )
@@ -221,7 +221,7 @@ class TestVirtualDisplay:
 
         # Build first
         subprocess.run(
-            ["docker", "build", "-t", "agentzero-test", "."],
+            ["docker", "build", "-t", "agent-zero-test", "."],
             cwd=project_root,
             capture_output=True,
             timeout=300,
@@ -229,7 +229,7 @@ class TestVirtualDisplay:
 
         # Run container with default entrypoint
         result = subprocess.run(
-            ["docker", "run", "-d", "--rm", "-p", "5900:5900", "agentzero-test"],
+            ["docker", "run", "-d", "--rm", "-p", "5900:5900", "agent-zero-test"],
             capture_output=True,
             text=True,
         )

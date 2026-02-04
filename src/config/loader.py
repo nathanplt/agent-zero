@@ -1,4 +1,4 @@
-"""Configuration loader for AgentZero.
+"""Configuration loader for Agent Zero.
 
 Loads configuration from YAML files and environment variables.
 Environment variables override YAML values using the AGENTZERO_ prefix.
