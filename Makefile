@@ -1,7 +1,10 @@
-.PHONY: install install-dev test lint typecheck format clean help
+.PHONY: install install-dev test lint typecheck format clean help docker-build docker-run docker-test
 
 # Default Python interpreter
 PYTHON ?= python3
+
+# Docker image name
+DOCKER_IMAGE ?= agentzero
 
 # Help target
 help:
@@ -18,6 +21,11 @@ help:
 	@echo "  make typecheck    Run type checker (mypy)"
 	@echo "  make format       Format code (ruff)"
 	@echo "  make check        Run all checks (lint + typecheck + test)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make docker-build Build the Docker image"
+	@echo "  make docker-run   Run the container with VNC"
+	@echo "  make docker-test  Run Docker-specific tests"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean        Remove build artifacts and caches"
@@ -68,3 +76,19 @@ clean:
 	rm -rf .coverage
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+# Docker targets
+docker-build:
+	docker build -t $(DOCKER_IMAGE) .
+
+docker-run:
+	docker run -it --rm -p 5900:5900 $(DOCKER_IMAGE)
+
+docker-test:
+	$(PYTHON) -m pytest tests/test_container.py -v
+
+docker-compose-up:
+	docker-compose up -d
+
+docker-compose-down:
+	docker-compose down

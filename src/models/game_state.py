@@ -94,12 +94,8 @@ class GameState(BaseModel):
     current_screen: ScreenType = Field(
         default=ScreenType.UNKNOWN, description="Current screen type"
     )
-    ui_elements: list[UIElement] = Field(
-        default_factory=list, description="Detected UI elements"
-    )
-    timestamp: datetime = Field(
-        default_factory=datetime.now, description="When state was captured"
-    )
+    ui_elements: list[UIElement] = Field(default_factory=list, description="Detected UI elements")
+    timestamp: datetime = Field(default_factory=datetime.now, description="When state was captured")
     raw_text: list[str] = Field(default_factory=list, description="Raw OCR text extracted")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional state data")
 

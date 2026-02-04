@@ -77,7 +77,9 @@ class TestConfigLoader:
 class TestEnvironmentOverrides:
     """Tests for environment variable overrides."""
 
-    def test_env_override_simple_value(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_override_simple_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that environment variables override YAML values."""
         config_data = {"agent": {"loop_rate": 10}}
         config_file = tmp_path / "test.yaml"
@@ -91,7 +93,9 @@ class TestEnvironmentOverrides:
 
         assert config.agent.loop_rate == 20
 
-    def test_env_override_nested_value(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_override_nested_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test environment override for nested config values."""
         config_data = {"llm": {"provider": "openai", "max_tokens": 1000}}
         config_file = tmp_path / "test.yaml"
@@ -105,7 +109,9 @@ class TestEnvironmentOverrides:
         assert config.llm.max_tokens == 8000
         assert config.llm.provider == "openai"  # unchanged
 
-    def test_env_override_boolean_value(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_override_boolean_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test environment override for boolean values."""
         config_data = {"vision": {"ocr_enabled": True}}
         config_file = tmp_path / "test.yaml"
@@ -118,7 +124,9 @@ class TestEnvironmentOverrides:
 
         assert config.vision.ocr_enabled is False
 
-    def test_env_override_float_value(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_override_float_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test environment override for float values."""
         config_data = {"llm": {"temperature": 0.7}}
         config_file = tmp_path / "test.yaml"
