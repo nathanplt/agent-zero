@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 6.4 Game Adapter | ⬜ available | Ready to start |
+| 7.1 Screen Streaming | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 6.4 Game Adapter | ⬜ available | 6.0, 6.1, 6.2, 6.3, 2.3 |
+| 7.1 Screen Streaming | ⬜ available | 2.1 |
 
 ## Completed
 
@@ -40,6 +40,7 @@
 | 6.1 Goal Hierarchy | cursor-agent |
 | 6.2 Incremental Meta-Strategy | cursor-agent |
 | 6.3 Planning System | cursor-agent |
+| 6.4 Game Adapter | cursor-agent |
 
 ---
 
