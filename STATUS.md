@@ -4,14 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 5.1 Game State Persistence | ⬜ available | Ready to start |
+| 5.2 Episodic Memory | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 5.2 Strategy Learning | ⬜ blocked | Needs 5.1 |
-| 5.3 Performance Optimization | ⬜ blocked | Needs 5.2 |
+| 5.3 Strategy Memory | ⬜ available | Can start in parallel |
 
 ## Completed
 
@@ -34,6 +33,7 @@
 | 4.1 Observation Pipeline | cloud-agent-f931 |
 | 4.2 Decision Engine | cloud-agent-f931 |
 | 4.3 Main Agent Loop | cloud-agent-f931 |
+| 5.1 Game State Persistence | cloud-agent-f931 |
 
 ---
 
