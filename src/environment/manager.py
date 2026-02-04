@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from src.environment.browser import BrowserRuntime, BrowserRuntimeError
 from src.environment.display import VirtualDisplay, VirtualDisplayError
 from src.interfaces.environment import (
-    EnvironmentError,
+    EnvironmentSetupError,
     EnvironmentHealth,
     EnvironmentManager,
     EnvironmentStatus,
@@ -100,7 +100,7 @@ class LocalEnvironmentManager(EnvironmentManager):
         This launches the virtual display (if not headless) and browser.
 
         Raises:
-            EnvironmentError: If startup fails.
+            EnvironmentSetupError: If startup fails.
         """
         if self._was_started and self.is_running():
             logger.warning("Environment is already running")
@@ -130,13 +130,13 @@ class LocalEnvironmentManager(EnvironmentManager):
 
         except VirtualDisplayError as e:
             self._cleanup()
-            raise EnvironmentError(f"Failed to start display: {e}") from e
+            raise EnvironmentSetupError(f"Failed to start display: {e}") from e
         except BrowserRuntimeError as e:
             self._cleanup()
-            raise EnvironmentError(f"Failed to start browser: {e}") from e
+            raise EnvironmentSetupError(f"Failed to start browser: {e}") from e
         except Exception as e:
             self._cleanup()
-            raise EnvironmentError(f"Failed to start environment: {e}") from e
+            raise EnvironmentSetupError(f"Failed to start environment: {e}") from e
 
     def stop(self) -> None:
         """Stop the execution environment.
@@ -248,18 +248,18 @@ class LocalEnvironmentManager(EnvironmentManager):
             PNG-encoded screenshot bytes.
 
         Raises:
-            EnvironmentError: If capture fails or environment not running.
+            EnvironmentSetupError: If capture fails or environment not running.
         """
         if not self.is_running():
-            raise EnvironmentError("Environment not running. Call start() first.")
+            raise EnvironmentSetupError("Environment not running. Call start() first.")
 
         if self._browser is None:
-            raise EnvironmentError("Browser not initialized")
+            raise EnvironmentSetupError("Browser not initialized")
 
         try:
             return self._browser.screenshot()
         except BrowserRuntimeError as e:
-            raise EnvironmentError(f"Screenshot failed: {e}") from e
+            raise EnvironmentSetupError(f"Screenshot failed: {e}") from e
 
     def screenshot_pil(self) -> Image.Image:
         """Capture a screenshot as a PIL Image.
@@ -268,18 +268,18 @@ class LocalEnvironmentManager(EnvironmentManager):
             PIL Image object.
 
         Raises:
-            EnvironmentError: If capture fails or environment not running.
+            EnvironmentSetupError: If capture fails or environment not running.
         """
         if not self.is_running():
-            raise EnvironmentError("Environment not running. Call start() first.")
+            raise EnvironmentSetupError("Environment not running. Call start() first.")
 
         if self._browser is None:
-            raise EnvironmentError("Browser not initialized")
+            raise EnvironmentSetupError("Browser not initialized")
 
         try:
             return self._browser.screenshot_pil()
         except BrowserRuntimeError as e:
-            raise EnvironmentError(f"Screenshot failed: {e}") from e
+            raise EnvironmentSetupError(f"Screenshot failed: {e}") from e
 
     def navigate(self, url: str) -> None:
         """Navigate the browser to a URL.
@@ -288,18 +288,18 @@ class LocalEnvironmentManager(EnvironmentManager):
             url: The URL to navigate to.
 
         Raises:
-            EnvironmentError: If navigation fails or environment not running.
+            EnvironmentSetupError: If navigation fails or environment not running.
         """
         if not self.is_running():
-            raise EnvironmentError("Environment not running. Call start() first.")
+            raise EnvironmentSetupError("Environment not running. Call start() first.")
 
         if self._browser is None:
-            raise EnvironmentError("Browser not initialized")
+            raise EnvironmentSetupError("Browser not initialized")
 
         try:
             self._browser.navigate(url)
         except BrowserRuntimeError as e:
-            raise EnvironmentError(f"Navigation failed: {e}") from e
+            raise EnvironmentSetupError(f"Navigation failed: {e}") from e
 
     def is_running(self) -> bool:
         """Check if the environment is running.

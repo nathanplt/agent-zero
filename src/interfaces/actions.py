@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ActionType(Enum):
-    """Types of actions the agent can perform."""
+class ActionType(StrEnum):
+    """Types of actions the agent can perform.
+
+    This is the canonical definition. Do not redefine in other modules;
+    import from here instead.
+    """
 
     CLICK = "click"
     DOUBLE_CLICK = "double_click"

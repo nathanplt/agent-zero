@@ -234,7 +234,11 @@ class MemoryStore(ABC):
         ...
 
 
-class MemoryError(Exception):
-    """Error raised when memory operations fail."""
+class MemoryStoreError(Exception):
+    """Error raised when memory operations fail.
+
+    Named MemoryStoreError to avoid shadowing the Python
+    built-in MemoryError (raised on out-of-memory conditions).
+    """
 
     pass

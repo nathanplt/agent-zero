@@ -287,7 +287,7 @@ class TestLocalEnvironmentManagerUnit:
     def test_screenshot_raises_when_not_running(self, mock_browser, mock_display):
         """screenshot() should raise when environment not running."""
         from src.environment.manager import LocalEnvironmentManager
-        from src.interfaces.environment import EnvironmentError
+        from src.interfaces.environment import EnvironmentSetupError
 
         mock_display.is_running = False
         mock_browser.is_running = False
@@ -299,7 +299,7 @@ class TestLocalEnvironmentManagerUnit:
         ):
             manager = LocalEnvironmentManager(headless=True)
 
-            with pytest.raises(EnvironmentError):
+            with pytest.raises(EnvironmentSetupError):
                 manager.screenshot()
 
     def test_navigate_calls_browser_navigate(self, mock_browser, mock_display):

@@ -81,7 +81,7 @@ class EnvironmentManager(ABC):
         This launches the container, virtual display, and browser.
 
         Raises:
-            EnvironmentError: If startup fails.
+            EnvironmentSetupError: If startup fails.
         """
         ...
 
@@ -118,7 +118,7 @@ class EnvironmentManager(ABC):
             PNG-encoded screenshot bytes.
 
         Raises:
-            EnvironmentError: If capture fails.
+            EnvironmentSetupError: If capture fails.
         """
         ...
 
@@ -130,7 +130,7 @@ class EnvironmentManager(ABC):
             PIL Image object.
 
         Raises:
-            EnvironmentError: If capture fails.
+            EnvironmentSetupError: If capture fails.
         """
         ...
 
@@ -142,7 +142,7 @@ class EnvironmentManager(ABC):
             url: The URL to navigate to.
 
         Raises:
-            EnvironmentError: If navigation fails.
+            EnvironmentSetupError: If navigation fails.
         """
         ...
 
@@ -177,7 +177,11 @@ class EnvironmentManager(ABC):
         ...
 
 
-class EnvironmentError(Exception):
-    """Error raised when environment operations fail."""
+class EnvironmentSetupError(Exception):
+    """Error raised when environment operations fail.
+
+    Named EnvironmentSetupError to avoid shadowing the Python
+    built-in EnvironmentError (OSError subclass).
+    """
 
     pass

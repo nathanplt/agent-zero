@@ -57,7 +57,11 @@ class Upgrade(BaseModel):
 
 
 class UIElement(BaseModel):
-    """A detected UI element in the game."""
+    """A detected UI element in the game (Pydantic-validated version).
+
+    A lightweight canonical version exists in interfaces.vision.UIElement.
+    Both share the same field set to ensure compatibility across the pipeline.
+    """
 
     element_type: str = Field(..., description="Type of element (button, text, etc.)")
     x: Annotated[int, Field(ge=0)] = Field(..., description="Left coordinate")
@@ -66,7 +70,7 @@ class UIElement(BaseModel):
     height: Annotated[int, Field(gt=0)] = Field(..., description="Height in pixels")
     label: str | None = Field(default=None, description="Text label if any")
     confidence: Annotated[float, Field(ge=0.0, le=1.0)] = Field(
-        default=1.0, description="Detection confidence"
+        default=0.0, description="Detection confidence"
     )
     clickable: bool = Field(default=True, description="Whether element is interactive")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional data")

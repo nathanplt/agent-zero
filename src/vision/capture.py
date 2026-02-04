@@ -22,12 +22,15 @@ Example:
 
 from __future__ import annotations
 
+import io
 import logging
 from collections import deque
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from src.interfaces.environment import EnvironmentError
+from PIL import Image
+
+from src.interfaces.environment import EnvironmentSetupError
 from src.interfaces.vision import Screenshot, VisionError
 
 if TYPE_CHECKING:
@@ -102,9 +105,11 @@ class ScreenshotCapture:
             # Capture timestamp immediately before capture
             timestamp = datetime.now()
 
-            # Get raw bytes and PIL Image from environment
+            # Get raw bytes from environment (single screenshot call)
             raw_bytes = self._environment_manager.screenshot()
-            pil_image = self._environment_manager.screenshot_pil()
+
+            # Derive PIL Image from the same bytes to avoid a second capture
+            pil_image = Image.open(io.BytesIO(raw_bytes))
 
             # Get dimensions from PIL image
             width, height = pil_image.size
@@ -125,7 +130,7 @@ class ScreenshotCapture:
 
             return screenshot
 
-        except EnvironmentError as e:
+        except EnvironmentSetupError as e:
             raise VisionError(f"Screenshot capture failed: {e}") from e
         except Exception as e:
             raise VisionError(f"Unexpected error during capture: {e}") from e

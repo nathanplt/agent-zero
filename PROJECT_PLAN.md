@@ -123,19 +123,24 @@
 # Configuration is loaded once at startup and passed to components
 # Runtime updates are handled via the ConfigManager
 
-@dataclass
-class AgentConfig:
-    """Main configuration, loaded from YAML + env vars."""
-    
+class AgentConfig(BaseModel):
+    """Main configuration, loaded from YAML + env vars.
+
+    NOTE: Actual implementation is in src/config/loader.py using
+    Pydantic BaseModel with nested config sections (AgentConfig,
+    EnvironmentConfig, VisionConfig, LLMConfig, etc.) wrapped
+    in a root Config model. See configs/default.yaml for defaults.
+    """
+
     # Environment
     display_width: int = 1920
     display_height: int = 1080
     headless: bool = False
-    
+
     # Agent loop
     loop_rate_hz: float = 1.0
     max_actions_per_minute: int = 60
-    
+
     # LLM
     llm_provider: str = "anthropic"  # or "openai"
     llm_model: str = "claude-3-sonnet"
@@ -176,8 +181,8 @@ class ConfigManager:
 
 **Configuration Hierarchy** (highest priority first):
 1. Runtime updates via API (7.3)
-2. Environment variables (`AGENT_ZERO_*`)
-3. Config file (`configs/agent.yaml`)
+2. Environment variables (`AGENTZERO_*`, e.g. `AGENTZERO_AGENT__LOOP_RATE=5`)
+3. Config file (`configs/default.yaml`)
 4. Default values in code
 
 **Acceptance Criteria**:
@@ -1020,8 +1025,7 @@ PASS: No duplicate client initialization
 
 **Metrics Collection**:
 ```python
-@dataclass
-class AgentMetrics:
+class AgentMetrics(BaseModel):
     """Metrics collected by the main loop."""
     
     # Timing

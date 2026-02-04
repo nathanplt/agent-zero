@@ -2,25 +2,12 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-
-class ActionType(StrEnum):
-    """Types of actions the agent can perform."""
-
-    CLICK = "click"
-    DOUBLE_CLICK = "double_click"
-    RIGHT_CLICK = "right_click"
-    DRAG = "drag"
-    TYPE = "type"
-    KEY_PRESS = "key_press"
-    KEY_COMBO = "key_combo"
-    SCROLL = "scroll"
-    WAIT = "wait"
-    MOVE = "move"
+# Import canonical ActionType from interfaces to avoid duplicate definitions.
+from src.interfaces.actions import ActionType
 
 
 class Point(BaseModel):

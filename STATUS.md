@@ -2,11 +2,17 @@
 
 ## Current Work
 
-| Feature | Status | Agent |
+| Feature | Status | Notes |
 |---------|--------|-------|
-| 3.3 Action Executor & Input Backend | available | - |
-| 4.1 Observation Pipeline | available | - |
-| 5.1 Game State Persistence | available | - |
+| 3.3 Action Executor | 🟨 partial | InputBackend + PlaywrightInputBackend done; ActionExecutor impl needed |
+
+## Next Up
+
+| Feature | Status | Dependencies |
+|---------|--------|-------------|
+| 4.1 Observation Pipeline | ⬜ blocked | Needs 3.3 completion |
+| 4.2 Decision Engine | ⬜ blocked | Needs 4.1 |
+| 4.3 Main Agent Loop | ⬜ blocked | Needs 4.1, 4.2 |
 
 ## Completed
 
@@ -28,32 +34,40 @@
 
 ---
 
+## Recent Changes (Rev 2)
+
+Code quality fixes applied to existing implementation:
+
+1. **EnvironmentError renamed** - `EnvironmentError` shadowed Python built-in; renamed to `EnvironmentSetupError`
+2. **MemoryError renamed** - `MemoryError` shadowed Python built-in; renamed to `MemoryStoreError`
+3. **Double screenshot fixed** - `capture.py` was calling both `screenshot()` and `screenshot_pil()` (two screenshots); now derives PIL from bytes
+4. **Duplicate ActionType removed** - `models/actions.py` now imports `ActionType` from `interfaces/actions.py` (canonical)
+5. **UIElement field parity** - `interfaces/vision.UIElement` now has `clickable`, `metadata`, `bounds` matching `models/game_state.UIElement`
+6. **Dockerfile ENV fix** - Inline comment in multi-line ENV block split into separate ENV instructions
+7. **Documentation sync** - ROADMAP.md, STATUS.md, README.md updated to reflect actual project state
+
+---
+
 ## PROJECT_PLAN.md Updated (Rev 1)
 
 The project plan has been revised to fix **12 identified gaps**:
 
-1. ✅ **Input Backend Interface** - Added to 3.3, connects controllers to Playwright
-2. ✅ **Roblox Authentication** - Added as Feature 1.4
-3. ✅ **Architecture clarified** - Removed undefined Action Queue/Event Bus
-4. ✅ **5.3 Dependency fixed** - Now parallel with 5.2, not dependent on it
-5. ✅ **Decision Engine LLM** - Clarified sharing with Vision module
-6. ✅ **Observer Framework** - Specified FastAPI + React
-7. ✅ **Interface mapping** - Added implementation references
-8. ✅ **Game Selection** - Added as Feature 6.0
-9. ✅ **Metrics Collection** - Added to Feature 4.3
-10. ✅ **Vision Composition** - Clarified in Feature 4.1
-11. ✅ **Integration Tests** - Added infrastructure in Testing section
-12. ✅ **Configuration Propagation** - Added ConfigManager details
+1. **Input Backend Interface** - Added to 3.3, connects controllers to Playwright
+2. **Roblox Authentication** - Added as Feature 1.4
+3. **Architecture clarified** - Removed undefined Action Queue/Event Bus
+4. **5.3 Dependency fixed** - Now parallel with 5.2, not dependent on it
+5. **Decision Engine LLM** - Clarified sharing with Vision module
+6. **Observer Framework** - Specified FastAPI + React
+7. **Interface mapping** - Added implementation references
+8. **Game Selection** - Added as Feature 6.0
+9. **Metrics Collection** - Added to Feature 4.3
+10. **Vision Composition** - Clarified in Feature 4.1
+11. **Integration Tests** - Added infrastructure in Testing section
+12. **Configuration Propagation** - Added ConfigManager details
 
 ---
 
-**Sprint 1 Extended** - New Feature 1.4 (Roblox Authentication) added.
-
-**Sprint 3** - Feature 3.3 now includes InputBackend interface + PlaywrightInputBackend.
-
-**Sprint 6** - New Feature 6.0 (Target Game Selection) must complete first.
-
-**Instructions for agents**: 
+**Instructions for agents**:
 - Read the updated PROJECT_PLAN.md before starting work
 - Claim a feature by changing status to `in progress` and adding your identifier
 - When done, move it to Completed and add the next available feature from PROJECT_PLAN.md

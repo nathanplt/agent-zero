@@ -198,9 +198,9 @@ class TestScreenshotCaptureCapture:
         capture = ScreenshotCapture(environment_manager=mock_env)
         capture.capture()
 
-        # Should call both screenshot methods
+        # Should call screenshot() once (PIL derived from bytes, not separate call)
         mock_env.screenshot.assert_called_once()
-        mock_env.screenshot_pil.assert_called_once()
+        mock_env.screenshot_pil.assert_not_called()
 
 
 class TestScreenshotCaptureBuffer:
@@ -407,13 +407,13 @@ class TestScreenshotCaptureErrorHandling:
 
     def test_capture_raises_on_environment_error(self):
         """capture() should raise VisionError on environment failure."""
-        from src.interfaces.environment import EnvironmentError
+        from src.interfaces.environment import EnvironmentSetupError
         from src.interfaces.vision import VisionError
         from src.vision.capture import ScreenshotCapture
 
         mock_env = MagicMock()
         mock_env.is_running.return_value = True
-        mock_env.screenshot.side_effect = EnvironmentError("Display crashed")
+        mock_env.screenshot.side_effect = EnvironmentSetupError("Display crashed")
 
         capture = ScreenshotCapture(environment_manager=mock_env)
 
