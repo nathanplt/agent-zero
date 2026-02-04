@@ -1,0 +1,50 @@
+{
+  "number_formats": [
+    {"input": "1.5K", "expected": 1500.0},
+    {"input": "2.3M", "expected": 2300000.0},
+    {"input": "1B", "expected": 1000000000.0},
+    {"input": "5.67T", "expected": 5670000000000.0},
+    {"input": "100", "expected": 100.0},
+    {"input": "1,234", "expected": 1234.0},
+    {"input": "1,234,567", "expected": 1234567.0},
+    {"input": "3.14", "expected": 3.14},
+    {"input": "0.5K", "expected": 500.0},
+    {"input": "10.5M", "expected": 10500000.0},
+    {"input": "1.23B", "expected": 1230000000.0},
+    {"input": "99.9T", "expected": 99900000000000.0},
+    {"input": "500K", "expected": 500000.0},
+    {"input": "1M", "expected": 1000000.0},
+    {"input": "2.5k", "expected": 2500.0},
+    {"input": "3.5m", "expected": 3500000.0},
+    {"input": "4.5b", "expected": 4500000000.0},
+    {"input": "5.5t", "expected": 5500000000000.0},
+    {"input": "$1.5K", "expected": 1500.0},
+    {"input": "1.5K coins", "expected": 1500.0},
+    {"input": "+2.3M", "expected": 2300000.0},
+    {"input": "-500", "expected": -500.0},
+    {"input": "  1.5K  ", "expected": 1500.0}
+  ],
+  "invalid_formats": [
+    {"input": "abc", "expected": null},
+    {"input": "", "expected": null},
+    {"input": "K", "expected": null},
+    {"input": "no numbers here", "expected": null}
+  ],
+  "text_samples": [
+    {
+      "description": "Simple resource counter",
+      "text": "Gold: 1,234",
+      "expected_numbers": [1234.0]
+    },
+    {
+      "description": "Multiple resources",
+      "text": "Gold: 1.5K | Gems: 500 | XP: 2.3M",
+      "expected_numbers": [1500.0, 500.0, 2300000.0]
+    },
+    {
+      "description": "Game stats",
+      "text": "Level 42 - Score: 999,999",
+      "expected_numbers": [42.0, 999999.0]
+    }
+  ]
+}
