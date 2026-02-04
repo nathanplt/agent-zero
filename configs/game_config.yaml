@@ -1,0 +1,49 @@
+# Game-specific configuration for target Roblox incremental game
+# See docs/target_game.md for selection rationale and UI catalog
+
+# Target game identity
+game:
+  name: "Money Clicker Incremental"
+  url: "https://www.roblox.com/games/18408132742/Money-Clicker-Incremental"
+  game_id: "18408132742"
+
+# Primary resource (display name and OCR hints)
+resources:
+  primary: "money"
+  display_formats:
+    - "1.5K"
+    - "1.5M"
+    - "1.5B"
+    - "1.5T"
+
+# UI regions (relative or approximate; used by vision/OCR)
+ui_regions:
+  resource_counter:
+    hint: "top or top-left"
+    detection: "ocr"
+  upgrade_panel:
+    hint: "right panel or sidebar"
+    detection: "ui_detection"
+  main_click_area:
+    hint: "center"
+    detection: "ui_detection"
+
+# Prestige / rebirth (if applicable)
+prestige:
+  enabled: true
+  button_hint: "prestige or rebirth button"
+  confirmation_dialog: true
+
+# Win / completion condition for automation
+win_condition:
+  type: "prestige_or_max_upgrades"
+  prestige_target: 10
+  fallback: "max_primary_upgrades"
+
+# Fixture paths for tests (relative to repo root)
+fixtures:
+  screenshot_dir: "tests/fixtures/game"
+  required_screenshots:
+    - "main_screen.png"
+    - "upgrade_menu.png"
+    - "prestige_dialog.png"
