@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 7.1 Screen Streaming | ⬜ available | Ready to start |
+| 7.2 Log Streaming | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 7.1 Screen Streaming | ⬜ available | 2.1 |
+| 7.2 Log Streaming | ⬜ available | 4.3 |
 
 ## Completed
 
@@ -41,6 +41,7 @@
 | 6.2 Incremental Meta-Strategy | cursor-agent |
 | 6.3 Planning System | cursor-agent |
 | 6.4 Game Adapter | cursor-agent |
+| 7.1 Screen Streaming | cursor-agent |
 
 ---
 
