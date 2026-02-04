@@ -4,7 +4,7 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 1.2 Browser Runtime | available | - |
+| 1.3 Environment Manager | available | - |
 
 ## Completed
 
@@ -14,6 +14,7 @@
 | 0.2 Interface Definitions | claude-agent |
 | 0.3 Shared Data Models | claude-agent |
 | 1.1 Container Definition | claude-agent |
+| 1.2 Browser Runtime | claude-agent |
 
 ---
 

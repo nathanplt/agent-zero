@@ -66,8 +66,12 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 
-# Install Python dependencies
-RUN pip install -e .
+# Install Python dependencies (including browser extras for Playwright)
+RUN pip install -e ".[browser,vision]"
+
+# Install Playwright browsers (Chromium)
+# This downloads and installs the browser binaries
+RUN playwright install chromium --with-deps
 
 # Copy startup scripts
 COPY docker/entrypoint.sh /entrypoint.sh
