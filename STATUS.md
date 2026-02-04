@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 6.3 Planning System | ⬜ available | Ready to start |
+| 6.4 Game Adapter | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 6.3 Planning System | ⬜ available | 6.1, 4.2 |
+| 6.4 Game Adapter | ⬜ available | 6.0, 6.1, 6.2, 6.3, 2.3 |
 
 ## Completed
 
@@ -39,6 +39,7 @@
 | 6.0 Game Selection | cursor-agent |
 | 6.1 Goal Hierarchy | cursor-agent |
 | 6.2 Incremental Meta-Strategy | cursor-agent |
+| 6.3 Planning System | cursor-agent |
 
 ---
 
