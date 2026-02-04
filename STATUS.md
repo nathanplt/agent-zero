@@ -4,7 +4,8 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 3.3 Action Executor | available | - |
+| 1.4 Roblox Authentication | available | - |
+| 3.3 Action Executor & Input Backend | available | - |
 | 4.1 Observation Pipeline | available | - |
 | 5.1 Game State Persistence | available | - |
 
@@ -27,12 +28,32 @@
 
 ---
 
-**Sprint 3 Nearly Complete** - Mouse Control and Keyboard Control done. Action Executor available to complete Sprint 3.
+## PROJECT_PLAN.md Updated (Rev 1)
 
-**Sprint 4 Ready to Start** - Observation Pipeline (4.1) dependencies are met.
+The project plan has been revised to fix **12 identified gaps**:
 
-**Sprint 5 Ready to Start** - Game State Persistence (5.1) dependencies are met.
+1. ✅ **Input Backend Interface** - Added to 3.3, connects controllers to Playwright
+2. ✅ **Roblox Authentication** - Added as Feature 1.4
+3. ✅ **Architecture clarified** - Removed undefined Action Queue/Event Bus
+4. ✅ **5.3 Dependency fixed** - Now parallel with 5.2, not dependent on it
+5. ✅ **Decision Engine LLM** - Clarified sharing with Vision module
+6. ✅ **Observer Framework** - Specified FastAPI + React
+7. ✅ **Interface mapping** - Added implementation references
+8. ✅ **Game Selection** - Added as Feature 6.0
+9. ✅ **Metrics Collection** - Added to Feature 4.3
+10. ✅ **Vision Composition** - Clarified in Feature 4.1
+11. ✅ **Integration Tests** - Added infrastructure in Testing section
+12. ✅ **Configuration Propagation** - Added ConfigManager details
+
+---
+
+**Sprint 1 Extended** - New Feature 1.4 (Roblox Authentication) added.
+
+**Sprint 3** - Feature 3.3 now includes InputBackend interface + PlaywrightInputBackend.
+
+**Sprint 6** - New Feature 6.0 (Target Game Selection) must complete first.
 
 **Instructions for agents**: 
+- Read the updated PROJECT_PLAN.md before starting work
 - Claim a feature by changing status to `in progress` and adding your identifier
 - When done, move it to Completed and add the next available feature from PROJECT_PLAN.md
