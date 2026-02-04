@@ -4,7 +4,7 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 1.3 Environment Manager | available | - |
+| 2.1 Screenshot Capture | available | - |
 
 ## Completed
 
@@ -15,10 +15,11 @@
 | 0.3 Shared Data Models | claude-agent |
 | 1.1 Container Definition | claude-agent |
 | 1.2 Browser Runtime | claude-agent |
+| 1.3 Environment Manager | claude-agent |
 
 ---
 
-**Sprint 1 In Progress** - Environment setup underway.
+**Sprint 1 Complete** - Environment setup finished. Sprint 2 (Vision) now available.
 
 **Instructions for agents**: 
 - Claim a feature by changing status to `in progress` and adding your identifier
