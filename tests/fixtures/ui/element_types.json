@@ -1,0 +1,70 @@
+{
+  "element_types": [
+    "button",
+    "menu",
+    "resource",
+    "text",
+    "icon",
+    "progress_bar",
+    "input",
+    "panel",
+    "tooltip",
+    "dialog"
+  ],
+  "button_keywords": [
+    "click",
+    "buy",
+    "sell",
+    "upgrade",
+    "start",
+    "ok",
+    "cancel",
+    "confirm",
+    "yes",
+    "no",
+    "play",
+    "next",
+    "back",
+    "close",
+    "submit"
+  ],
+  "resource_keywords": [
+    "gold",
+    "gems",
+    "coins",
+    "diamonds",
+    "energy",
+    "health",
+    "mana",
+    "xp",
+    "level",
+    "score",
+    "cash",
+    "points"
+  ],
+  "test_scenarios": [
+    {
+      "name": "simple_button",
+      "elements": [
+        {"type": "button", "x": 100, "y": 200, "width": 120, "height": 40, "label": "Click Me"}
+      ]
+    },
+    {
+      "name": "resource_display",
+      "elements": [
+        {"type": "resource", "x": 10, "y": 10, "width": 80, "height": 30, "label": "Gold: 1.5K"},
+        {"type": "resource", "x": 100, "y": 10, "width": 80, "height": 30, "label": "Gems: 500"}
+      ]
+    },
+    {
+      "name": "game_ui",
+      "elements": [
+        {"type": "button", "x": 50, "y": 400, "width": 100, "height": 50, "label": "Upgrade"},
+        {"type": "button", "x": 200, "y": 400, "width": 100, "height": 50, "label": "Buy"},
+        {"type": "resource", "x": 300, "y": 20, "width": 120, "height": 40, "label": "Gold: 10.5M"},
+        {"type": "menu", "x": 10, "y": 10, "width": 40, "height": 40, "label": null},
+        {"type": "progress_bar", "x": 100, "y": 300, "width": 200, "height": 20, "label": null}
+      ]
+    }
+  ]
+}
