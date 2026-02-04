@@ -21,9 +21,18 @@ import pytest
 from src.environment.browser import BrowserRuntime
 from src.interfaces.environment import EnvironmentStatus
 
+
 # Mark for tests requiring Docker
+def _docker_available() -> bool:
+    """Check if Docker is available."""
+    try:
+        result = subprocess.run(["docker", "info"], capture_output=True)
+        return result.returncode == 0
+    except (FileNotFoundError, OSError):
+        return False
+
 docker = pytest.mark.skipif(
-    subprocess.run(["docker", "info"], capture_output=True).returncode != 0,
+    not _docker_available(),
     reason="Docker not available",
 )
 

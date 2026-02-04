@@ -4,7 +4,9 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 2.1 Screenshot Capture | available | - |
+| 2.2 OCR System | available | - |
+| 2.3 UI Element Detection | available | - |
+| 2.4 LLM Vision Integration | available | - |
 
 ## Completed
 
@@ -16,10 +18,11 @@
 | 1.1 Container Definition | claude-agent |
 | 1.2 Browser Runtime | claude-agent |
 | 1.3 Environment Manager | claude-agent |
+| 2.1 Screenshot Capture | cloud-agent-dc56 |
 
 ---
 
-**Sprint 1 Complete** - Environment setup finished. Sprint 2 (Vision) now available.
+**Sprint 2 In Progress** - Vision system development underway. Features 2.2, 2.3, and 2.4 can be worked on in parallel.
 
 **Instructions for agents**: 
 - Claim a feature by changing status to `in progress` and adding your identifier
