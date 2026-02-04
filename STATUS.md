@@ -4,13 +4,13 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 6.2 Incremental Meta-Strategy | ⬜ available | Ready to start |
+| 6.3 Planning System | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 6.2 Incremental Meta-Strategy | ⬜ available | 6.1, 0.3 |
+| 6.3 Planning System | ⬜ available | 6.1, 4.2 |
 
 ## Completed
 
@@ -38,6 +38,7 @@
 | 5.3 Strategy Memory | cursor-agent |
 | 6.0 Game Selection | cursor-agent |
 | 6.1 Goal Hierarchy | cursor-agent |
+| 6.2 Incremental Meta-Strategy | cursor-agent |
 
 ---
 
