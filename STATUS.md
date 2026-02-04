@@ -4,15 +4,15 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 4.2 Decision Engine | ⬜ available | Ready to start |
+| 4.3 Main Agent Loop | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 4.3 Main Agent Loop | ⬜ blocked | Needs 4.2 |
 | 5.1 Game State Persistence | ⬜ available | Can start in parallel |
 | 5.2 Strategy Learning | ⬜ blocked | Needs 5.1 |
+| 5.3 Performance Optimization | ⬜ blocked | Needs 5.2 |
 
 ## Completed
 
@@ -33,6 +33,7 @@
 | 3.2 Keyboard Control | cloud-agent-f931 |
 | 3.3 Action Executor | cloud-agent-f931 |
 | 4.1 Observation Pipeline | cloud-agent-f931 |
+| 4.2 Decision Engine | cloud-agent-f931 |
 
 ---
 
