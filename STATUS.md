@@ -4,15 +4,15 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 3.3 Action Executor | 🟨 partial | InputBackend + PlaywrightInputBackend done; ActionExecutor impl needed |
+| 4.1 Observation Pipeline | ⬜ available | Ready to start |
 
 ## Next Up
 
 | Feature | Status | Dependencies |
 |---------|--------|-------------|
-| 4.1 Observation Pipeline | ⬜ blocked | Needs 3.3 completion |
 | 4.2 Decision Engine | ⬜ blocked | Needs 4.1 |
 | 4.3 Main Agent Loop | ⬜ blocked | Needs 4.1, 4.2 |
+| 5.1 Game State Persistence | ⬜ available | Can start in parallel |
 
 ## Completed
 
@@ -31,6 +31,7 @@
 | 2.4 LLM Vision Integration | cloud-agent-eff4 |
 | 3.1 Mouse Control | cloud-agent-dc56 |
 | 3.2 Keyboard Control | cloud-agent-f931 |
+| 3.3 Action Executor | cloud-agent-f931 |
 
 ---
 
