@@ -381,24 +381,17 @@ class TestModelImports:
 
     def test_import_from_package(self) -> None:
         """Test importing models from src.models."""
-        from src.models import (
-            Action,
-            ActionType,
-            Decision,
-            GameState,
-            Observation,
-            Resource,
-            ScreenType,
-            UIElement,
-            Upgrade,
-        )
+        import src.models as models
 
         # Verify they are classes
-        assert isinstance(Action, type)
-        assert isinstance(GameState, type)
-        assert isinstance(Decision, type)
-        assert isinstance(Observation, type)
+        assert isinstance(models.Action, type)
+        assert isinstance(models.GameState, type)
+        assert isinstance(models.Decision, type)
+        assert isinstance(models.Observation, type)
+        assert isinstance(models.Resource, type)
+        assert isinstance(models.UIElement, type)
+        assert isinstance(models.Upgrade, type)
 
         # Verify enums
-        assert ScreenType.MAIN.value == "main"
-        assert ActionType.CLICK.value == "click"
+        assert models.ScreenType.MAIN.value == "main"
+        assert models.ActionType.CLICK.value == "click"

@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
 
-class ScreenType(str, Enum):
+class ScreenType(StrEnum):
     """Types of screens in the game."""
 
     MAIN = "main"
@@ -119,9 +119,8 @@ class GameState(BaseModel):
     def find_element(self, element_type: str, label: str | None = None) -> UIElement | None:
         """Find a UI element by type and optional label."""
         for element in self.ui_elements:
-            if element.element_type == element_type:
-                if label is None or element.label == label:
-                    return element
+            if element.element_type == element_type and (label is None or element.label == label):
+                return element
         return None
 
     def find_elements(self, element_type: str) -> list[UIElement]:

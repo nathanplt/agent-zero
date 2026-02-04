@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     """Types of actions the agent can perform."""
 
     CLICK = "click"
