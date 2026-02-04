@@ -4,7 +4,7 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 1.1 Container Definition | available | - |
+| 1.2 Browser Runtime | available | - |
 
 ## Completed
 
@@ -13,10 +13,11 @@
 | 0.1 Scaffolding | claude-agent |
 | 0.2 Interface Definitions | claude-agent |
 | 0.3 Shared Data Models | claude-agent |
+| 1.1 Container Definition | claude-agent |
 
 ---
 
-**Sprint 0 Complete!** All foundation features are done. Sprint 1 (Environment) is now ready.
+**Sprint 1 In Progress** - Environment setup underway.
 
 **Instructions for agents**: 
 - Claim a feature by changing status to `in progress` and adding your identifier

@@ -1,4 +1,4 @@
-# AgentZero Default Configuration
+# Agent Zero Default Configuration
 # Environment variables override these values using AGENTZERO_ prefix
 # Example: AGENTZERO_AGENT__LOOP_RATE=5 overrides agent.loop_rate
 

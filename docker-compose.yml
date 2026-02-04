@@ -1,0 +1,40 @@
+# Agent Zero Docker Compose Configuration
+# Orchestrates the agent environment with all required services
+
+version: "3.9"
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-zero
+    ports:
+      # VNC for remote viewing
+      - "5900:5900"
+    environment:
+      - DISPLAY=:99
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+    volumes:
+      # Mount config for easy updates
+      - ./configs:/app/configs:ro
+      # Persist data (screenshots, logs, etc.)
+      - agent-zero-data:/app/data
+    restart: unless-stopped
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    # Security options
+    security_opt:
+      - seccomp:unconfined
+    # Shared memory for browser
+    shm_size: 2gb
+
+volumes:
+  agent-zero-data:
+    driver: local

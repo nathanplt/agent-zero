@@ -1,14 +1,14 @@
-# AgentZero
+# Agent Zero
 
 > An autonomous agent that plays Roblox incremental games to completion.
 
 ## Project Status
 
-🚧 **In Development** - Sprint 0
+🚧 **In Development** - Sprint 1
 
 ## Overview
 
-AgentZero is a general-purpose computer-using agent, starting with mastery of Roblox incremental games. The agent runs in its own isolated environment (container/VM), and users observe its progress through a web dashboard.
+Agent Zero is a general-purpose computer-using agent, starting with mastery of Roblox incremental games. The agent runs in its own isolated environment (container/VM), and users observe its progress through a web dashboard.
 
 ### Key Features (Planned)
 
@@ -59,7 +59,7 @@ make dev
 ## Project Structure
 
 ```
-agentzero/
+agent-zero/
 ├── src/
 │   ├── interfaces/     # Abstract base classes
 │   ├── models/         # Pydantic data models

@@ -1,4 +1,4 @@
-# AgentZero Roadmap
+# Agent Zero Roadmap
 
 > Quick visual reference for project progress and dependencies.
 

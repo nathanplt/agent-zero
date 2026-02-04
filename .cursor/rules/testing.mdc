@@ -1,0 +1,81 @@
+---
+description: Testing conventions for Agent Zero
+globs: ["tests/**/*.py", "**/*test*.py"]
+---
+
+# Testing Rules
+
+## Test-First Development
+
+This project follows strict test-first development:
+
+1. **Write tests before implementation** - Tests should initially fail
+2. **Tests define acceptance criteria** - If it's not tested, it doesn't work
+3. **Run tests frequently** - `make test` after every significant change
+
+## Test Structure
+
+### File Organization
+```
+tests/
+├── __init__.py
+├── test_config.py      # Configuration tests
+├── test_container.py   # Docker container tests
+├── test_interfaces.py  # Interface/type tests
+├── test_models.py      # Pydantic model tests
+└── fixtures/           # Shared test data (future)
+```
+
+### Test Class Naming
+- Group related tests in classes: `class TestFeatureName:`
+- Use descriptive names: `def test_action_fails_on_invalid_target(self):`
+
+## Test Patterns
+
+### Unit Tests
+```python
+def test_model_validation():
+    """Model should reject invalid input."""
+    with pytest.raises(ValidationError):
+        MyModel(invalid_field="bad_value")
+```
+
+### Fixture Usage
+```python
+@pytest.fixture
+def sample_game_state():
+    return GameState(resources={"gold": 100})
+
+def test_game_state_serialization(sample_game_state):
+    data = sample_game_state.model_dump_json()
+    restored = GameState.model_validate_json(data)
+    assert restored == sample_game_state
+```
+
+### Docker Tests
+Tests requiring Docker should use the skip marker:
+```python
+docker = pytest.mark.skipif(
+    subprocess.run(["docker", "info"], capture_output=True).returncode != 0,
+    reason="Docker not available",
+)
+
+@docker
+class TestContainerRuntime:
+    ...
+```
+
+## Mocking
+
+- Mock external services (LLM APIs, network calls)
+- Use `pytest-mock` or `unittest.mock`
+- Place complex mocks in `conftest.py`
+
+## Running Tests
+
+```bash
+make test           # Run all tests
+make test-cov       # Run with coverage report
+pytest tests/test_models.py  # Run specific file
+pytest -k "test_action"      # Run tests matching pattern
+```

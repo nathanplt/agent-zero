@@ -1,4 +1,4 @@
-"""Interface definitions for AgentZero components.
+"""Interface definitions for Agent Zero components.
 
 All components implement these interfaces to enable loose coupling and testability.
 """
