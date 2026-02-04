@@ -4,8 +4,8 @@
 
 | Feature | Status | Agent |
 |---------|--------|-------|
-| 3.1 Mouse Control | available | - |
 | 3.2 Keyboard Control | available | - |
+| 3.3 Action Executor | available | - |
 
 ## Completed
 
@@ -21,10 +21,11 @@
 | 2.2 OCR System | cloud-agent-dc56 |
 | 2.3 UI Element Detection | cloud-agent-dc56 |
 | 2.4 LLM Vision Integration | cloud-agent-eff4 |
+| 3.1 Mouse Control | cloud-agent-dc56 |
 
 ---
 
-**Sprint 2 Complete** - All Vision features are done. Sprint 3 (Actions) features are now available.
+**Sprint 3 In Progress** - Mouse Control complete. Keyboard Control and Action Executor available.
 
 **Instructions for agents**: 
 - Claim a feature by changing status to `in progress` and adding your identifier
