@@ -9,13 +9,14 @@
 
 FROM python:3.11-slim-bookworm
 
-# Set environment variables
+# Set Python environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    # Display configuration
-    DISPLAY=:99 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Display configuration
+ENV DISPLAY=:99 \
     DISPLAY_WIDTH=1920 \
     DISPLAY_HEIGHT=1080 \
     DISPLAY_DEPTH=24

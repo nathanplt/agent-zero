@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -72,9 +72,17 @@ class TextRegion:
 
 
 class UIElement:
-    """A detected UI element in a screenshot."""
+    """A detected UI element in a screenshot.
 
-    __slots__ = ("element_type", "x", "y", "width", "height", "confidence", "label")
+    This is the canonical lightweight UIElement used across the vision pipeline.
+    A Pydantic-validated version exists in models.game_state for serialization.
+    Both share the same field set to ensure compatibility.
+    """
+
+    __slots__ = (
+        "element_type", "x", "y", "width", "height",
+        "confidence", "label", "clickable", "metadata",
+    )
 
     def __init__(
         self,
@@ -83,8 +91,10 @@ class UIElement:
         y: int,
         width: int,
         height: int,
-        confidence: float,
+        confidence: float = 0.0,
         label: str | None = None,
+        clickable: bool = True,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Initialize a UI element.
 
@@ -96,6 +106,8 @@ class UIElement:
             height: Height of bounding box.
             confidence: Detection confidence score (0.0 to 1.0).
             label: Optional text label for the element.
+            clickable: Whether this element is interactive.
+            metadata: Additional data (e.g., mark_id for SoM).
         """
         self.element_type = element_type
         self.x = x
@@ -104,11 +116,18 @@ class UIElement:
         self.height = height
         self.confidence = confidence
         self.label = label
+        self.clickable = clickable
+        self.metadata = metadata if metadata is not None else {}
 
     @property
     def center(self) -> tuple[int, int]:
         """Get the center point of this element."""
         return (self.x + self.width // 2, self.y + self.height // 2)
+
+    @property
+    def bounds(self) -> tuple[int, int, int, int]:
+        """Get bounds as (x, y, x2, y2)."""
+        return (self.x, self.y, self.x + self.width, self.y + self.height)
 
 
 class VisionSystem(ABC):

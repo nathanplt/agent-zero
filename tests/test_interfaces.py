@@ -26,11 +26,11 @@ from src.interfaces.communication import (
     LogLevel,
 )
 from src.interfaces.environment import (
-    EnvironmentError,
+    EnvironmentSetupError,
     EnvironmentHealth,
     EnvironmentStatus,
 )
-from src.interfaces.memory import Episode, MemoryError, Strategy
+from src.interfaces.memory import Episode, MemoryStoreError, Strategy
 from src.interfaces.strategy import (
     Goal,
     GoalStatus,
@@ -273,9 +273,9 @@ class TestExceptionTypes:
             raise ActionError("test error")
 
     def test_memory_error(self) -> None:
-        """Test MemoryError can be raised."""
-        with pytest.raises(MemoryError, match="test error"):
-            raise MemoryError("test error")
+        """Test MemoryStoreError can be raised."""
+        with pytest.raises(MemoryStoreError, match="test error"):
+            raise MemoryStoreError("test error")
 
     def test_strategy_error(self) -> None:
         """Test StrategyError can be raised."""
@@ -283,9 +283,9 @@ class TestExceptionTypes:
             raise StrategyError("test error")
 
     def test_environment_error(self) -> None:
-        """Test EnvironmentError can be raised."""
-        with pytest.raises(EnvironmentError, match="test error"):
-            raise EnvironmentError("test error")
+        """Test EnvironmentSetupError can be raised."""
+        with pytest.raises(EnvironmentSetupError, match="test error"):
+            raise EnvironmentSetupError("test error")
 
     def test_communication_error(self) -> None:
         """Test CommunicationError can be raised."""

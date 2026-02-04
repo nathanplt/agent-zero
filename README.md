@@ -4,7 +4,7 @@
 
 ## Project Status
 
-🚧 **In Development** - Sprint 1
+**In Development** - Sprints 0-2 complete, Sprint 3 in progress
 
 ## Overview
 
@@ -40,6 +40,7 @@ Agent Zero is a general-purpose computer-using agent, starting with mastery of R
 
 - [Project Plan](PROJECT_PLAN.md) - Detailed sprint and feature breakdown
 - [Roadmap](ROADMAP.md) - Visual progress tracker
+- [Status](STATUS.md) - Current work and completed features
 - [Agent Work Guide](docs/AGENT_WORK_GUIDE.md) - For parallel agent development
 - [Testing Strategy](docs/TESTING_STRATEGY.md) - How to test each component
 
@@ -49,11 +50,14 @@ Agent Zero is a general-purpose computer-using agent, starting with mastery of R
 # Install dependencies
 make install
 
+# Install development dependencies
+make install-dev
+
 # Run tests
 make test
 
-# Start development environment
-make dev
+# Run all checks (lint + typecheck + test)
+make check
 ```
 
 ## Project Structure
@@ -61,24 +65,21 @@ make dev
 ```
 agent-zero/
 ├── src/
-│   ├── interfaces/     # Abstract base classes
+│   ├── interfaces/     # Abstract base classes and contracts
 │   ├── models/         # Pydantic data models
-│   ├── vision/         # Screenshot, OCR, UI detection
-│   ├── actions/        # Mouse, keyboard control
-│   ├── core/           # Main agent loop
-│   ├── memory/         # State persistence
-│   ├── strategy/       # Decision making
-│   ├── environment/    # Container management
-│   └── observer/       # Web dashboard, streaming
-├── tests/
-│   ├── unit/           # Unit tests
-│   ├── integration/    # Integration tests
-│   ├── e2e/            # End-to-end tests
-│   ├── performance/    # Performance benchmarks
-│   └── fixtures/       # Shared test data
-├── configs/            # Configuration files
-├── docs/               # Documentation
-└── scripts/            # Utility scripts
+│   ├── vision/         # Screenshot, OCR, UI detection, LLM vision
+│   ├── actions/        # Mouse, keyboard control, input backends
+│   ├── environment/    # Display, browser, auth, environment manager
+│   └── config/         # YAML + env var configuration loader
+├── tests/              # Test suite (unit + integration)
+│   └── fixtures/       # Shared test data (OCR numbers, UI elements)
+├── configs/            # Configuration files (default.yaml)
+├── docker/             # Docker entrypoint and display scripts
+├── docs/               # Documentation guides
+├── Dockerfile          # Container definition
+├── docker-compose.yml  # Service orchestration
+├── Makefile            # Development commands
+└── pyproject.toml      # Project metadata and dependencies
 ```
 
 ## Development
@@ -86,19 +87,22 @@ agent-zero/
 ### Prerequisites
 
 - Python 3.11+
-- Docker
+- Docker (for container builds)
 - Make
 
 ### Commands
 
 ```bash
-make install        # Install dependencies
+make install        # Install production dependencies
+make install-dev    # Install development dependencies
 make test           # Run all tests
-make test-unit      # Run unit tests only
-make lint           # Run linter
-make typecheck      # Run mypy
-make format         # Auto-format code
-make coverage       # Generate coverage report
+make test-cov       # Run tests with coverage report
+make lint           # Run linter (ruff)
+make typecheck      # Run type checker (mypy)
+make format         # Auto-format code (ruff)
+make check          # Run all checks (lint + typecheck + test)
+make docker-build   # Build Docker image
+make docker-run     # Run container with VNC
 ```
 
 ## Legal Notice

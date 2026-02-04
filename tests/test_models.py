@@ -99,7 +99,7 @@ class TestUIElementModel:
             height=30,
         )
         assert elem.element_type == "button"
-        assert elem.confidence == 1.0  # default
+        assert elem.confidence == 0.0  # default
 
     def test_ui_element_center(self) -> None:
         """Test center calculation."""
