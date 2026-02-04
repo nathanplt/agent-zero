@@ -4,7 +4,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 5.3 Strategy Memory | ⬜ available | Ready to start |
+| 6.0 Game Selection | ⬜ available | Ready to start |
 
 ## Next Up
 
@@ -35,6 +35,7 @@
 | 4.3 Main Agent Loop | cloud-agent-f931 |
 | 5.1 Game State Persistence | cloud-agent-f931 |
 | 5.2 Episodic Memory | cloud-agent-f931 |
+| 5.3 Strategy Memory | cursor-agent |
 
 ---
 
