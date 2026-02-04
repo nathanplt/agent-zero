@@ -6,13 +6,25 @@ This module provides:
 - Click variations (single, double, right-click, hold)
 - Drag operations
 
+The controller uses an InputBackend for actual input operations,
+allowing different backends (Playwright, pyautogui, etc.) or
+testing with NullInputBackend.
+
 Example:
     >>> from src.actions.mouse import MouseController
+    >>> from src.actions.backend import NullInputBackend
     >>> from src.interfaces.actions import Point
     >>>
+    >>> # For testing (no actual input)
     >>> controller = MouseController()
     >>> controller.move(Point(500, 300))
     >>> controller.click()
+    >>>
+    >>> # For real browser control
+    >>> from src.actions.backend import PlaywrightInputBackend
+    >>> backend = PlaywrightInputBackend(page)
+    >>> controller = MouseController(backend=backend)
+    >>> controller.move(Point(500, 300))  # Actually moves mouse in browser
 """
 
 from __future__ import annotations
@@ -23,6 +35,7 @@ import random
 import time
 from typing import TYPE_CHECKING
 
+from src.actions.backend import InputBackend, NullInputBackend
 from src.interfaces.actions import Point
 
 if TYPE_CHECKING:
@@ -160,33 +173,48 @@ class MouseController:
     Provides natural mouse movement using Bezier curves,
     click operations with timing variance, and drag support.
 
+    Uses an InputBackend for actual input operations. If no backend
+    is provided, uses NullInputBackend (no-op for testing).
+
     Attributes:
         _screen_width: Screen width in pixels.
         _screen_height: Screen height in pixels.
         _current_position: Current mouse position.
+        _backend: Input backend for actual operations.
 
     Example:
+        >>> # Testing (no actual input)
         >>> controller = MouseController(screen_width=1920, screen_height=1080)
         >>> controller.move(Point(500, 300))
-        >>> controller.click()
+        >>>
+        >>> # Real browser control
+        >>> backend = PlaywrightInputBackend(page)
+        >>> controller = MouseController(backend=backend)
+        >>> controller.move(Point(500, 300))  # Actually moves in browser
     """
 
     def __init__(
         self,
         screen_width: int = 1920,
         screen_height: int = 1080,
+        backend: InputBackend | None = None,
     ) -> None:
         """Initialize the mouse controller.
 
         Args:
             screen_width: Screen width in pixels.
             screen_height: Screen height in pixels.
+            backend: Input backend for actual operations. If None, uses NullInputBackend.
         """
         self._screen_width = screen_width
         self._screen_height = screen_height
         self._current_position = (0, 0)
+        self._backend = backend if backend is not None else NullInputBackend()
 
-        logger.debug(f"MouseController initialized for {screen_width}x{screen_height}")
+        logger.debug(
+            f"MouseController initialized for {screen_width}x{screen_height} "
+            f"with {type(self._backend).__name__}"
+        )
 
     def _clamp_to_screen(self, x: float, y: float) -> tuple[int, int]:
         """Clamp coordinates to screen bounds.
@@ -205,26 +233,25 @@ class MouseController:
     def _execute_move(self, path: list[tuple[float, float]]) -> None:
         """Execute mouse movement along a path.
 
-        This is the internal method that performs the actual movement.
-        Override or mock for testing.
+        Uses the backend to perform actual mouse movement.
 
         Args:
             path: List of (x, y) points to move through.
         """
-        # Default implementation just updates position
-        # Real implementation would use pyautogui or similar
         if path:
             final = path[-1]
-            self._current_position = self._clamp_to_screen(final[0], final[1])
+            clamped = self._clamp_to_screen(final[0], final[1])
+            self._backend.mouse_move(clamped[0], clamped[1])
+            self._current_position = clamped
 
     def _execute_click(self, button: str = "left") -> None:
-        """Execute a mouse click.
+        """Execute a mouse click at current position.
 
         Args:
             button: Mouse button ('left', 'right', 'middle').
         """
-        # Default implementation does nothing
-        # Real implementation would use pyautogui or similar
+        x, y = self._current_position
+        self._backend.mouse_click(x, y, button)
         logger.debug(f"Click: {button} at {self._current_position}")
 
     def _mouse_down(self, button: str = "left") -> None:
@@ -233,6 +260,7 @@ class MouseController:
         Args:
             button: Mouse button.
         """
+        self._backend.mouse_down(button)
         logger.debug(f"Mouse down: {button}")
 
     def _mouse_up(self, button: str = "left") -> None:
@@ -241,6 +269,7 @@ class MouseController:
         Args:
             button: Mouse button.
         """
+        self._backend.mouse_up(button)
         logger.debug(f"Mouse up: {button}")
 
     def _get_current_position(self) -> tuple[int, int]:
@@ -416,6 +445,22 @@ class MouseController:
             direction: 'up', 'down', 'left', or 'right'.
             amount: Number of scroll units.
         """
-        # Default implementation does nothing
-        # Real implementation would use pyautogui or similar
+        x, y = self._current_position
+
+        # Convert direction and amount to delta values
+        # Positive delta_y = scroll down, negative = scroll up
+        delta_x = 0
+        delta_y = 0
+        scroll_pixels = amount * 100  # Convert scroll units to pixels
+
+        if direction == "down":
+            delta_y = scroll_pixels
+        elif direction == "up":
+            delta_y = -scroll_pixels
+        elif direction == "right":
+            delta_x = scroll_pixels
+        elif direction == "left":
+            delta_x = -scroll_pixels
+
+        self._backend.scroll(x, y, delta_x, delta_y)
         logger.debug(f"Scroll {direction} by {amount}")

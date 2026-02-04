@@ -1,4 +1,4 @@
-"""Tests for configuration loading."""
+"""Tests for configuration loading and management."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from src.config import load_config
+from src.config import Config, ConfigManager, load_config
 
 
 class TestConfigLoader:
@@ -203,3 +203,158 @@ class TestConfigSerialization:
 
         assert isinstance(json_str, str)
         assert "loop_rate" in json_str
+
+
+class TestConfigManager:
+    """Tests for ConfigManager runtime configuration."""
+
+    @pytest.fixture
+    def manager(self) -> ConfigManager:
+        """Create a ConfigManager with default config."""
+        return ConfigManager(Config())
+
+    def test_get_returns_config(self, manager: ConfigManager) -> None:
+        """get() should return the current config."""
+        config = manager.get()
+
+        assert isinstance(config, Config)
+        assert config.agent.loop_rate == 10  # default value
+
+    def test_config_property(self, manager: ConfigManager) -> None:
+        """config property should return the current config."""
+        config = manager.config
+
+        assert isinstance(config, Config)
+        assert config.agent.loop_rate == 10
+
+    def test_update_simple_value(self, manager: ConfigManager) -> None:
+        """update() should update a simple value."""
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert manager.get().agent.loop_rate == 20
+
+    def test_update_nested_value(self, manager: ConfigManager) -> None:
+        """update() should update nested values."""
+        manager.update({
+            "llm": {
+                "max_tokens": 8000,
+                "temperature": 0.5,
+            }
+        })
+
+        assert manager.get().llm.max_tokens == 8000
+        assert manager.get().llm.temperature == 0.5
+
+    def test_update_preserves_other_values(self, manager: ConfigManager) -> None:
+        """update() should preserve values not being updated."""
+        original_timeout = manager.get().agent.timeout
+
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert manager.get().agent.loop_rate == 20
+        assert manager.get().agent.timeout == original_timeout
+
+    def test_update_validates(self, manager: ConfigManager) -> None:
+        """update() should validate new values."""
+        with pytest.raises(ValidationError):
+            manager.update({"agent": {"loop_rate": 500}})  # max is 100
+
+    def test_subscribe_receives_updates(self, manager: ConfigManager) -> None:
+        """Subscribers should receive config updates."""
+        received_configs: list[Config] = []
+
+        def callback(config: Config) -> None:
+            received_configs.append(config)
+
+        manager.subscribe(callback)
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert len(received_configs) == 1
+        assert received_configs[0].agent.loop_rate == 20
+
+    def test_multiple_subscribers(self, manager: ConfigManager) -> None:
+        """Multiple subscribers should all receive updates."""
+        call_count = [0, 0]
+
+        def callback1(_config: Config) -> None:
+            call_count[0] += 1
+
+        def callback2(_config: Config) -> None:
+            call_count[1] += 1
+
+        manager.subscribe(callback1)
+        manager.subscribe(callback2)
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert call_count[0] == 1
+        assert call_count[1] == 1
+
+    def test_unsubscribe(self, manager: ConfigManager) -> None:
+        """unsubscribe() should stop callbacks."""
+        call_count = [0]
+
+        def callback(_config: Config) -> None:
+            call_count[0] += 1
+
+        manager.subscribe(callback)
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert call_count[0] == 1
+
+        manager.unsubscribe(callback)
+        manager.update({"agent": {"loop_rate": 30}})
+
+        assert call_count[0] == 1  # No additional calls
+
+    def test_subscriber_error_does_not_break_others(
+        self, manager: ConfigManager
+    ) -> None:
+        """A failing subscriber should not prevent other subscribers."""
+        call_count = [0]
+
+        def bad_callback(_config: Config) -> None:
+            raise RuntimeError("Callback error")
+
+        def good_callback(_config: Config) -> None:
+            call_count[0] += 1
+
+        manager.subscribe(bad_callback)
+        manager.subscribe(good_callback)
+
+        # Should not raise, and good_callback should still be called
+        manager.update({"agent": {"loop_rate": 20}})
+
+        assert call_count[0] == 1
+
+    def test_reset_returns_to_defaults(self, manager: ConfigManager) -> None:
+        """reset() should return config to defaults."""
+        manager.update({"agent": {"loop_rate": 50}})
+        assert manager.get().agent.loop_rate == 50
+
+        manager.reset()
+
+        assert manager.get().agent.loop_rate == 10  # default
+
+    def test_reset_notifies_subscribers(self, manager: ConfigManager) -> None:
+        """reset() should notify subscribers."""
+        received_configs: list[Config] = []
+
+        def callback(config: Config) -> None:
+            received_configs.append(config)
+
+        manager.subscribe(callback)
+        manager.update({"agent": {"loop_rate": 50}})
+        manager.reset()
+
+        assert len(received_configs) == 2
+        assert received_configs[1].agent.loop_rate == 10  # default
+
+
+class TestConfigManagerExports:
+    """Tests for ConfigManager exports."""
+
+    def test_config_manager_exported(self) -> None:
+        """ConfigManager should be exported from config package."""
+        from src.config import ConfigManager
+
+        assert ConfigManager is not None

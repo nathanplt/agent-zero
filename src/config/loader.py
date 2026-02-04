@@ -7,7 +7,9 @@ Nested keys use double underscores: AGENTZERO_AGENT__LOOP_RATE=5
 
 from __future__ import annotations
 
+import contextlib
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -156,3 +158,154 @@ def load_config(config_path: str | Path | None = None) -> Config:
 def get_default_config() -> Config:
     """Get default configuration without loading from file."""
     return Config()
+
+
+# Type for config change callbacks
+ConfigCallback = Callable[[Config], None]
+
+
+class ConfigManager:
+    """Manages configuration with runtime update support.
+
+    Provides:
+    - Access to current configuration
+    - Runtime updates with validation
+    - Subscriber notifications on changes
+
+    Example:
+        >>> manager = ConfigManager(load_config())
+        >>>
+        >>> # Subscribe to changes
+        >>> def on_config_change(config: Config):
+        ...     print(f"Config changed: loop_rate={config.agent.loop_rate}")
+        >>> manager.subscribe(on_config_change)
+        >>>
+        >>> # Update at runtime
+        >>> manager.update({"agent": {"loop_rate": 5}})
+        Config changed: loop_rate=5
+    """
+
+    def __init__(self, config: Config) -> None:
+        """Initialize with a configuration.
+
+        Args:
+            config: Initial configuration.
+        """
+        self._config = config
+        self._subscribers: list[ConfigCallback] = []
+
+    @property
+    def config(self) -> Config:
+        """Get the current configuration."""
+        return self._config
+
+    def get(self) -> Config:
+        """Get the current configuration.
+
+        Returns:
+            Current Config object.
+        """
+        return self._config
+
+    def subscribe(self, callback: ConfigCallback) -> None:
+        """Subscribe to configuration changes.
+
+        The callback will be called whenever the configuration is updated.
+
+        Args:
+            callback: Function to call with new config on changes.
+        """
+        self._subscribers.append(callback)
+
+    def unsubscribe(self, callback: ConfigCallback) -> None:
+        """Unsubscribe from configuration changes.
+
+        Args:
+            callback: Previously subscribed callback to remove.
+        """
+        if callback in self._subscribers:
+            self._subscribers.remove(callback)
+
+    def update(self, updates: dict[str, Any]) -> Config:
+        """Update configuration at runtime.
+
+        Merges updates into current config, validates, and notifies subscribers.
+
+        Args:
+            updates: Dictionary of updates. Can be nested.
+                Example: {"agent": {"loop_rate": 5}}
+
+        Returns:
+            Updated Config object.
+
+        Raises:
+            ValidationError: If updates result in invalid configuration.
+        """
+        # Convert current config to dict
+        current_dict = self._config.model_dump()
+
+        # Deep merge updates
+        merged = self._deep_merge(current_dict, updates)
+
+        # Validate and create new config
+        new_config = Config.model_validate(merged)
+
+        # Store new config
+        self._config = new_config
+
+        # Notify subscribers
+        for subscriber in self._subscribers:
+            try:
+                subscriber(new_config)
+            except Exception as e:
+                # Log but don't fail on subscriber errors
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    f"Config subscriber error: {e}"
+                )
+
+        return new_config
+
+    def _deep_merge(
+        self,
+        base: dict[str, Any],
+        updates: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Deep merge updates into base dict.
+
+        Args:
+            base: Base dictionary.
+            updates: Updates to merge in.
+
+        Returns:
+            Merged dictionary.
+        """
+        result = base.copy()
+
+        for key, value in updates.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+
+        return result
+
+    def reset(self) -> Config:
+        """Reset configuration to defaults.
+
+        Returns:
+            Default Config object.
+        """
+        self._config = Config()
+
+        # Notify subscribers
+        for subscriber in self._subscribers:
+            with contextlib.suppress(Exception):
+                subscriber(self._config)
+
+        return self._config

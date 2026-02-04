@@ -6,13 +6,23 @@ This module provides:
 - Key combinations (Ctrl+A, Ctrl+C, etc.)
 - Key down/up control for advanced use cases
 
+The controller uses an InputBackend for actual input operations,
+allowing different backends (Playwright, pyautogui, etc.) or
+testing with NullInputBackend.
+
 Example:
     >>> from src.actions.keyboard import KeyboardController
     >>>
+    >>> # For testing (no actual input)
     >>> controller = KeyboardController()
     >>> controller.type_text("Hello World")
     >>> controller.press_key("enter")
-    >>> controller.key_combo(["ctrl", "a"])
+    >>>
+    >>> # For real browser control
+    >>> from src.actions.backend import PlaywrightInputBackend
+    >>> backend = PlaywrightInputBackend(page)
+    >>> controller = KeyboardController(backend=backend)
+    >>> controller.type_text("Hello World")  # Actually types in browser
 """
 
 from __future__ import annotations
@@ -21,6 +31,8 @@ import logging
 import random
 import time
 from typing import TYPE_CHECKING
+
+from src.actions.backend import InputBackend, NullInputBackend
 
 if TYPE_CHECKING:
     pass
@@ -150,47 +162,56 @@ class KeyboardController:
     Provides natural typing with timing variance,
     special key support, and key combinations.
 
+    Uses an InputBackend for actual input operations. If no backend
+    is provided, uses NullInputBackend (no-op for testing).
+
     Attributes:
         _base_delay_ms: Base delay between keystrokes.
         _delay_variance_ms: Variance in keystroke timing.
+        _backend: Input backend for actual operations.
 
     Example:
+        >>> # Testing (no actual input)
         >>> controller = KeyboardController()
         >>> controller.type_text("Hello")
-        >>> controller.press_key("enter")
-        >>> controller.key_combo(["ctrl", "c"])
+        >>>
+        >>> # Real browser control
+        >>> backend = PlaywrightInputBackend(page)
+        >>> controller = KeyboardController(backend=backend)
+        >>> controller.type_text("Hello")  # Actually types in browser
     """
 
     def __init__(
         self,
         base_delay_ms: float = 80.0,
         delay_variance_ms: float = 40.0,
+        backend: InputBackend | None = None,
     ) -> None:
         """Initialize the keyboard controller.
 
         Args:
             base_delay_ms: Base delay between keystrokes in milliseconds.
             delay_variance_ms: Variance in keystroke timing.
+            backend: Input backend for actual operations. If None, uses NullInputBackend.
         """
         self._base_delay_ms = base_delay_ms
         self._delay_variance_ms = delay_variance_ms
+        self._backend = backend if backend is not None else NullInputBackend()
 
         logger.debug(
             f"KeyboardController initialized with base_delay={base_delay_ms}ms, "
-            f"variance={delay_variance_ms}ms"
+            f"variance={delay_variance_ms}ms, backend={type(self._backend).__name__}"
         )
 
     def _press_char(self, char: str) -> None:
         """Press a single character key.
 
-        This is the internal method that performs the actual key press.
-        Override or mock for testing.
+        Uses the backend to perform actual character input.
 
         Args:
             char: Character to type.
         """
-        # Default implementation does nothing
-        # Real implementation would use pyautogui or similar
+        self._backend.type_char(char)
         logger.debug(f"Press char: {char!r}")
 
     def _key_down(self, key: str) -> None:
@@ -199,7 +220,7 @@ class KeyboardController:
         Args:
             key: Key name.
         """
-        # Default implementation does nothing
+        self._backend.key_down(key)
         logger.debug(f"Key down: {key}")
 
     def _key_up(self, key: str) -> None:
@@ -208,7 +229,7 @@ class KeyboardController:
         Args:
             key: Key name.
         """
-        # Default implementation does nothing
+        self._backend.key_up(key)
         logger.debug(f"Key up: {key}")
 
     def type_text(
