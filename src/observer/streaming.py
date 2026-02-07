@@ -1,14 +1,13 @@
-"""Screen streaming: JPEG compression and frame service for WebSocket delivery.
-
-Provides frame rate limiting and configurable quality. Used by the FastAPI
-WebSocket endpoint at /ws/screen.
-"""
+"""Screen/action streaming services for observer WebSocket delivery."""
 
 from __future__ import annotations
 
 import io
 import logging
 import threading
+from collections import deque
+from datetime import datetime
+from typing import Any
 
 from PIL import Image
 
@@ -84,3 +83,31 @@ class ScreenStreamingService:
     def get_stream_quality(self) -> int:
         """Get current JPEG quality."""
         return self._stream_quality
+
+
+class ActionStreamingService:
+    """Thread-safe bounded event stream for action/decision observability."""
+
+    def __init__(self, max_events: int = 500) -> None:
+        self._max_events = max(1, max_events)
+        self._lock = threading.Lock()
+        self._events: deque[dict[str, Any]] = deque(maxlen=self._max_events)
+        self._next_id = 1
+
+    def push_event(self, payload: dict[str, Any]) -> int:
+        """Push an event payload and return its assigned event id."""
+        with self._lock:
+            event_id = self._next_id
+            self._next_id += 1
+            event = {
+                "id": event_id,
+                "timestamp": datetime.now().isoformat(),
+                "payload": payload,
+            }
+            self._events.append(event)
+            return event_id
+
+    def get_events_since(self, last_event_id: int) -> list[dict[str, Any]]:
+        """Get events with id greater than `last_event_id`."""
+        with self._lock:
+            return [event for event in self._events if int(event["id"]) > last_event_id]

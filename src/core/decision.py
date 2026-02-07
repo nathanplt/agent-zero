@@ -37,6 +37,7 @@ from src.core.prompts import DecisionPrompts
 from src.interfaces.actions import Action, ActionType, Point
 from src.models.actions import Action as ModelAction
 from src.models.decisions import Decision
+from src.strategy.policy import IncrementalPolicyEngine
 
 if TYPE_CHECKING:
     from src.core.observation import Observation
@@ -80,6 +81,8 @@ class DecisionConfig:
     retry_delay: float = 1.0
     temperature: float = 0.3  # Lower for more deterministic decisions
     max_tokens: int = 1024
+    policy_enabled: bool = False
+    policy_confidence_threshold: float = 0.7
 
 
 class DecisionEngine:
@@ -113,6 +116,7 @@ class DecisionEngine:
         config: DecisionConfig | None = None,
         prompts: DecisionPrompts | None = None,
         api_key: str | None = None,
+        policy_engine: IncrementalPolicyEngine | None = None,
     ) -> None:
         """Initialize the decision engine.
 
@@ -127,6 +131,7 @@ class DecisionEngine:
         self._config = config or DecisionConfig()
         self._prompts = prompts or DecisionPrompts()
         self._api_key = api_key
+        self._policy = policy_engine or IncrementalPolicyEngine()
 
         if self._config.provider not in VALID_PROVIDERS:
             raise ValueError(
@@ -209,6 +214,26 @@ class DecisionEngine:
                 return self._cache[cache_key]
             self._cache_misses += 1
 
+        # Try deterministic policy first for fast/cheap decisions.
+        if self._config.policy_enabled:
+            try:
+                policy = self._policy.propose(
+                    observation=observation,
+                    recent_actions=self._recent_actions,
+                )
+                if policy.confidence >= self._config.policy_confidence_threshold:
+                    decision = self._decision_from_policy(policy, observation)
+                    if use_cache:
+                        self._add_to_cache(cache_key, decision)
+                    duration_ms = (time.time() - start_time) * 1000
+                    logger.debug(
+                        f"Policy decision made in {duration_ms:.1f}ms: "
+                        f"{decision.action.type} with confidence {decision.confidence:.2f}"
+                    )
+                    return decision
+            except Exception as e:
+                logger.warning(f"Policy decision failed, falling back to LLM: {e}")
+
         # Build prompt
         prompt = self._prompts.build_react_prompt(
             observation=observation,
@@ -225,6 +250,14 @@ class DecisionEngine:
         # Parse response
         try:
             decision = self._parse_response(response, observation)
+            decision = decision.model_copy(
+                update={
+                    "context": {
+                        **decision.context,
+                        "decision_source": "llm",
+                    }
+                }
+            )
         except Exception as e:
             raise DecisionEngineError(f"Failed to parse decision: {e}") from e
 
@@ -239,6 +272,27 @@ class DecisionEngine:
         )
 
         return decision
+
+    def _decision_from_policy(
+        self,
+        policy: Any,
+        observation: Observation,
+    ) -> Decision:
+        """Convert a policy proposal into a Decision model."""
+        return Decision(
+            reasoning=policy.rationale,
+            action=policy.action,
+            confidence=float(policy.confidence),
+            expected_outcome=policy.expected_outcome,
+            timestamp=datetime.now(),
+            alternatives=[],
+            context={
+                "screen_type": observation.game_state.current_screen.value,
+                "observation_confidence": observation.confidence,
+                "decision_source": "policy",
+                "policy_strategy": policy.strategy,
+            },
+        )
 
     def record_action_result(
         self,
@@ -261,6 +315,11 @@ class DecisionEngine:
             "result": "success" if success else "failed",
             "outcome": outcome,
             "timestamp": datetime.now().isoformat(),
+            "strategy": (
+                action.parameters.get("strategy")
+                if hasattr(action, "parameters") and isinstance(action.parameters, dict)
+                else None
+            ),
         }
 
         self._recent_actions.insert(0, record)

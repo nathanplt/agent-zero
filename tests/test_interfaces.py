@@ -26,8 +26,8 @@ from src.interfaces.communication import (
     LogLevel,
 )
 from src.interfaces.environment import (
-    EnvironmentSetupError,
     EnvironmentHealth,
+    EnvironmentSetupError,
     EnvironmentStatus,
 )
 from src.interfaces.memory import Episode, MemoryStoreError, Strategy

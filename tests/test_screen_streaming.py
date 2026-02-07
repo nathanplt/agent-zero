@@ -1,4 +1,4 @@
-"""Tests for screen streaming (Feature 7.1)."""
+"""Tests for screen and log streaming (Feature 7.1/7.2)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,11 @@ import io
 
 import pytest
 
-from src.observer.streaming import ScreenStreamingService, compress_frame_to_jpeg
+from src.observer.streaming import (
+    ActionStreamingService,
+    ScreenStreamingService,
+    compress_frame_to_jpeg,
+)
 
 # PIL for test images
 pytest.importorskip("PIL")
@@ -82,6 +86,32 @@ class TestScreenStreamingService:
         assert frame is not None
 
 
+class TestActionStreamingService:
+    """Tests for ActionStreamingService."""
+
+    def test_push_and_retrieve_events_with_incrementing_ids(self) -> None:
+        svc = ActionStreamingService(max_events=5)
+        first_id = svc.push_event({"event": "a"})
+        second_id = svc.push_event({"event": "b"})
+
+        assert first_id == 1
+        assert second_id == 2
+        events = svc.get_events_since(0)
+        assert [event["id"] for event in events] == [1, 2]
+        assert events[1]["payload"]["event"] == "b"
+
+    def test_event_buffer_is_bounded(self) -> None:
+        svc = ActionStreamingService(max_events=2)
+        svc.push_event({"event": "a"})
+        svc.push_event({"event": "b"})
+        svc.push_event({"event": "c"})
+
+        events = svc.get_events_since(0)
+        assert len(events) == 2
+        assert events[0]["payload"]["event"] == "b"
+        assert events[1]["payload"]["event"] == "c"
+
+
 class TestWebSocketEndpoint:
     """Tests for FastAPI WebSocket /ws/screen (requires fastapi)."""
 
@@ -89,17 +119,18 @@ class TestWebSocketEndpoint:
     def app_and_service(self):
         pytest.importorskip("fastapi")
         from src.observer.server import create_app
-        from src.observer.streaming import ScreenStreamingService
+        from src.observer.streaming import ActionStreamingService, ScreenStreamingService
 
         svc = ScreenStreamingService(stream_fps=10, stream_quality=75)
-        app = create_app(streaming_service=svc)
-        return app, svc
+        action_svc = ActionStreamingService()
+        app = create_app(streaming_service=svc, action_streaming_service=action_svc)
+        return app, svc, action_svc
 
     def test_websocket_connect_and_receive_frames(self, app_and_service) -> None:
         pytest.importorskip("fastapi")
         from starlette.testclient import TestClient
 
-        app, svc = app_and_service
+        app, svc, _ = app_and_service
         svc.push_frame(_make_test_image(64, 64))
         with TestClient(app) as client, client.websocket_connect("/ws/screen") as ws:
             data = ws.receive_bytes()
@@ -111,6 +142,28 @@ class TestWebSocketEndpoint:
         pytest.importorskip("fastapi")
         from starlette.testclient import TestClient
 
-        app, _ = app_and_service
+        app, _, _ = app_and_service
         with TestClient(app) as client, client.websocket_connect("/ws/screen") as ws:
             ws.close()
+
+    def test_log_websocket_receives_action_events(self, app_and_service) -> None:
+        pytest.importorskip("fastapi")
+        from starlette.testclient import TestClient
+
+        app, _, action_svc = app_and_service
+        action_svc.push_event({"event": "decision", "action": "click"})
+        with TestClient(app) as client, client.websocket_connect("/ws/logs") as ws:
+            data = ws.receive_json()
+            assert data["payload"]["event"] == "decision"
+            assert data["payload"]["action"] == "click"
+
+    def test_live_page_is_served(self, app_and_service) -> None:
+        pytest.importorskip("fastapi")
+        from starlette.testclient import TestClient
+
+        app, _, _ = app_and_service
+        with TestClient(app) as client:
+            response = client.get("/live")
+        assert response.status_code == 200
+        assert "ws/screen" in response.text
+        assert "ws/logs" in response.text

@@ -58,6 +58,16 @@ make test
 
 # Run all checks (lint + typecheck + test)
 make check
+
+# Run agent with live observer page
+agent-zero run \
+  --game-url "https://www.roblox.com/games/18408132742/Money-Clicker-Incremental" \
+  --observe \
+  --observer-host 127.0.0.1 \
+  --observer-port 8080 \
+  --username "your_user" \
+  --password "your_password"
+# Open http://127.0.0.1:8080/live
 ```
 
 ## Project Structure

@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING
 from src.environment.browser import BrowserRuntime, BrowserRuntimeError
 from src.environment.display import VirtualDisplay, VirtualDisplayError
 from src.interfaces.environment import (
-    EnvironmentSetupError,
     EnvironmentHealth,
     EnvironmentManager,
+    EnvironmentSetupError,
     EnvironmentStatus,
 )
 
