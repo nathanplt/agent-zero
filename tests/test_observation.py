@@ -218,6 +218,39 @@ class TestObservationPipeline:
 
         assert pipeline._capture is mock_capture
         assert pipeline._ocr is mock_ocr
+
+    def test_parallel_timeout_cancels_pending_futures(
+        self,
+        mock_capture,
+        mock_ocr,
+        mock_ui_detector,
+        mock_screenshot,
+        monkeypatch,
+    ):
+        """Timed-out OCR/UI futures should be cancelled to prevent leaks."""
+        pipeline = ObservationPipeline(
+            capture=mock_capture,
+            ocr=mock_ocr,
+            ui_detector=mock_ui_detector,
+            config=PipelineConfig(parallel_timeout=0.01),
+        )
+
+        ocr_future = MagicMock()
+        ui_future = MagicMock()
+        ocr_future.done.return_value = False
+        ui_future.done.return_value = False
+        pipeline._executor.submit = MagicMock(side_effect=[ocr_future, ui_future])  # noqa: SLF001
+
+        def _raise_timeout(_futures, timeout):
+            _ = timeout
+            raise TimeoutError("parallel timeout")
+
+        monkeypatch.setattr("src.core.observation.as_completed", _raise_timeout)
+
+        pipeline._run_parallel_detection(mock_screenshot)  # noqa: SLF001
+
+        ocr_future.cancel.assert_called_once()
+        ui_future.cancel.assert_called_once()
         assert pipeline._ui_detector is mock_ui_detector
 
     def test_observe_returns_observation(self, pipeline):

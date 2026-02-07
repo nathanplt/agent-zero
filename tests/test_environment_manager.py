@@ -196,6 +196,25 @@ class TestLocalEnvironmentManagerUnit:
             mock_display.start.assert_called_once()
             mock_browser.start.assert_called_once()
 
+    def test_start_headed_without_virtual_display_skips_display_start(self, mock_browser, mock_display):
+        """Headed native display mode should not attempt virtual-display startup."""
+        from src.environment.manager import LocalEnvironmentManager
+
+        mock_browser.is_running = True
+
+        with patch.object(
+            LocalEnvironmentManager, "_create_display", return_value=mock_display
+        ) as create_display, patch.object(
+            LocalEnvironmentManager, "_create_browser", return_value=mock_browser
+        ):
+            manager = LocalEnvironmentManager(headless=False, use_virtual_display=False)
+            manager.start()
+
+            create_display.assert_not_called()
+            mock_display.start.assert_not_called()
+            mock_browser.start.assert_called_once()
+            assert manager.is_running()
+
     def test_status_running_after_start(self, mock_browser, mock_display):
         """status() should return RUNNING after successful start()."""
         from src.environment.manager import LocalEnvironmentManager
@@ -318,8 +337,24 @@ class TestLocalEnvironmentManagerUnit:
             manager.start()
 
             manager.navigate("https://example.com")
-
             mock_browser.navigate.assert_called_once_with("https://example.com")
+
+    def test_get_browser_runtime_returns_public_browser_reference(self, mock_browser, mock_display):
+        """Public browser accessor should avoid private reach-through in CLI."""
+        from src.environment.manager import LocalEnvironmentManager
+
+        mock_display.is_running = True
+        mock_browser.is_running = True
+
+        with patch.object(
+            LocalEnvironmentManager, "_create_display", return_value=mock_display
+        ), patch.object(
+            LocalEnvironmentManager, "_create_browser", return_value=mock_browser
+        ):
+            manager = LocalEnvironmentManager(headless=True)
+            manager.start()
+
+            assert manager.get_browser_runtime() is mock_browser
 
     def test_get_display_size_returns_tuple(self, mock_browser, mock_display):
         """get_display_size() should return (width, height) tuple."""

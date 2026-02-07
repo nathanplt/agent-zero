@@ -38,6 +38,7 @@ import logging
 import re
 import time
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -342,9 +343,14 @@ class ObservationPipeline:
                         ui_error = e
         except TimeoutError:
             logger.warning("Parallel detection timed out")
-            # Cancel remaining futures
-            for f in futures:
-                f.cancel()
+        finally:
+            # Cancel unfinished futures to avoid dangling background work.
+            for future in futures:
+                done = False
+                with suppress(Exception):
+                    done = bool(future.done())
+                if not done:
+                    future.cancel()
 
         return text_regions, ui_elements, ocr_error, ui_error
 

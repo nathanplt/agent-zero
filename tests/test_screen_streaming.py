@@ -111,6 +111,16 @@ class TestActionStreamingService:
         assert events[0]["payload"]["event"] == "b"
         assert events[1]["payload"]["event"] == "c"
 
+    def test_push_and_pop_control_commands(self) -> None:
+        svc = ActionStreamingService(max_events=5)
+        cmd_id = svc.push_control_command("auth_click_login")
+
+        assert cmd_id == 1
+        commands = svc.pop_control_commands()
+        assert len(commands) == 1
+        assert commands[0]["command"] == "auth_click_login"
+        assert svc.pop_control_commands() == []
+
 
 class TestWebSocketEndpoint:
     """Tests for FastAPI WebSocket /ws/screen (requires fastapi)."""
@@ -167,3 +177,21 @@ class TestWebSocketEndpoint:
         assert response.status_code == 200
         assert "ws/screen" in response.text
         assert "ws/logs" in response.text
+        assert "/control/auth/click-login" in response.text
+        assert "Click Login In Agent Session" in response.text
+
+    def test_control_click_login_endpoint_enqueues_command_and_event(self, app_and_service) -> None:
+        pytest.importorskip("fastapi")
+        from starlette.testclient import TestClient
+
+        app, _, action_svc = app_and_service
+        with TestClient(app) as client:
+            response = client.post("/control/auth/click-login")
+
+        assert response.status_code == 200
+        events = action_svc.get_events_since(0)
+        assert events
+        assert events[-1]["payload"]["event"] == "auth_click_login_request"
+        commands = action_svc.pop_control_commands()
+        assert commands
+        assert commands[-1]["command"] == "auth_click_login"

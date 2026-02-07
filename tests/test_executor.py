@@ -259,6 +259,18 @@ class TestActionValidation:
         assert is_valid is False
         assert "duration" in error.lower()
 
+    def test_validate_wait_zero_duration(self, executor):
+        """Wait with zero duration should fail."""
+        action = Action(
+            action_type=ActionType.WAIT,
+            parameters={"duration_ms": 0},
+        )
+
+        is_valid, error = executor.validate(action)
+
+        assert is_valid is False
+        assert "duration" in error.lower()
+
     def test_validate_move_valid(self, executor):
         """Valid move should pass."""
         action = Action(

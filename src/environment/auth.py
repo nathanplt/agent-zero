@@ -34,6 +34,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -48,6 +49,24 @@ logger = logging.getLogger(__name__)
 ROBLOX_HOME = "https://www.roblox.com"
 ROBLOX_LOGIN = "https://www.roblox.com/login"
 ROBLOX_LOGOUT = "https://www.roblox.com/logout"
+
+USERNAME_SELECTORS = [
+    'input[name="username"]',
+    'input[id="login-username"]',
+    'input[placeholder*="Username"]',
+    'input[placeholder*="Email"]',
+]
+PASSWORD_SELECTORS = [
+    'input[name="password"]',
+    'input[id="login-password"]',
+    'input[type="password"]',
+]
+LOGIN_BUTTON_SELECTORS = [
+    'button[type="submit"]',
+    'button[id="login-button"]',
+    'button:has-text("Log In")',
+    'button:has-text("Login")',
+]
 
 # Environment variable names for credentials
 ENV_USERNAME = "ROBLOX_USERNAME"
@@ -109,6 +128,26 @@ class Credentials:
     def has_2fa(self) -> bool:
         """Check if 2FA credentials are available."""
         return self.totp_secret is not None and len(self.totp_secret) > 0
+
+
+class AuthOutcome(StrEnum):
+    """Typed authentication outcomes for deterministic CLI behavior."""
+
+    SUCCESS = "SUCCESS"
+    NETWORK_TIMEOUT = "NETWORK_TIMEOUT"
+    CHALLENGE_BLOCKED = "CHALLENGE_BLOCKED"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    UNKNOWN_FAILURE = "UNKNOWN_FAILURE"
+
+
+@dataclass(frozen=True)
+class AuthResult:
+    """Result of an authentication attempt."""
+
+    outcome: AuthOutcome
+    message: str
+    retryable: bool
+    latency_ms: float
 
 
 def generate_totp_code(secret: str) -> str:
@@ -206,6 +245,11 @@ class RobloxAuth:
             raise AuthenticationError("Browser not started. Call browser.start() first.")
         return self._browser.page
 
+    @property
+    def browser_is_headless(self) -> bool:
+        """Return whether the backing browser runtime is headless."""
+        return bool(getattr(self._browser, "is_headless", False))
+
     def _ensure_storage_dir(self) -> None:
         """Ensure the storage directory exists."""
         self._storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -262,18 +306,12 @@ class RobloxAuth:
     def is_authenticated(self) -> bool:
         """Check if currently authenticated with Roblox.
 
-        Navigates to Roblox and checks for authentication indicators.
+        Checks current page for authentication indicators.
 
         Returns:
             True if authenticated, False otherwise.
         """
         try:
-            # Navigate to Roblox home
-            self.page.goto(ROBLOX_HOME, wait_until="domcontentloaded", timeout=30000)
-
-            # Wait a moment for any redirects
-            self.page.wait_for_timeout(1000)
-
             # Check for authentication indicators
             # - Logged in: User menu or avatar present
             # - Logged out: Login button visible
@@ -304,11 +342,22 @@ class RobloxAuth:
             logger.warning(f"Authentication check failed: {e}")
             return False
 
+    def _first_available_locator(self, selectors: list[str]):
+        """Return the first locator that currently resolves to an element."""
+        for selector in selectors:
+            try:
+                locator = self.page.locator(selector)
+                if locator.count() > 0:
+                    return locator
+            except Exception:
+                pass
+        return None
+
     def login(
         self,
         credentials: Credentials | None = None,
         save_session: bool = True,
-    ) -> bool:
+    ) -> AuthResult:
         """Log in to Roblox.
 
         Args:
@@ -316,14 +365,21 @@ class RobloxAuth:
             save_session: Whether to save session after successful login.
 
         Returns:
-            True if login successful.
-
-        Raises:
-            AuthenticationError: If login fails.
+            Structured authentication result.
         """
+        started_at = time.time()
+
         # Get credentials
         if credentials is None:
-            credentials = Credentials.from_environment()
+            try:
+                credentials = Credentials.from_environment()
+            except AuthenticationError as e:
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.INVALID_CREDENTIALS,
+                    message=str(e),
+                    retryable=False,
+                )
         self._credentials = credentials
 
         logger.info(f"Attempting login for user: {credentials.username}")
@@ -336,42 +392,84 @@ class RobloxAuth:
             # Check if already logged in
             if self.is_authenticated():
                 logger.info("Already authenticated")
-                return True
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.SUCCESS,
+                    message="Already authenticated",
+                    retryable=False,
+                )
 
             # Fill in credentials
-            # Find username field
-            username_input = self.page.locator(
-                'input[name="username"], input[id="login-username"], '
-                'input[placeholder*="Username"], input[placeholder*="Email"]'
-            )
+            username_input = self._first_available_locator(USERNAME_SELECTORS)
+            if username_input is None:
+                if self._check_for_challenge_prompt():
+                    return self._build_auth_result(
+                        started_at=started_at,
+                        outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                        message="Login blocked by challenge/captcha flow",
+                        retryable=False,
+                    )
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.NETWORK_TIMEOUT,
+                    message="Login form did not appear in time (username field missing).",
+                    retryable=True,
+                )
             username_input.fill(credentials.username)
             logger.debug("Username entered")
 
-            # Find password field
-            password_input = self.page.locator(
-                'input[name="password"], input[id="login-password"], '
-                'input[type="password"]'
-            )
+            password_input = self._first_available_locator(PASSWORD_SELECTORS)
+            if password_input is None:
+                if self._check_for_challenge_prompt():
+                    return self._build_auth_result(
+                        started_at=started_at,
+                        outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                        message="Login blocked by challenge/captcha flow",
+                        retryable=False,
+                    )
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.NETWORK_TIMEOUT,
+                    message="Login form did not appear in time (password field missing).",
+                    retryable=True,
+                )
             password_input.fill(credentials.password)
             logger.debug("Password entered")
 
             # Click login button
-            login_button = self.page.locator(
-                'button[type="submit"], button[id="login-button"], '
-                'button:has-text("Log In"), button:has-text("Login")'
-            )
+            login_button = self._first_available_locator(LOGIN_BUTTON_SELECTORS)
+            if login_button is None:
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.UNKNOWN_FAILURE,
+                    message="Login submit button not found on page.",
+                    retryable=True,
+                )
             login_button.click()
             logger.debug("Login button clicked")
 
             # Wait for response
             self.page.wait_for_timeout(3000)
 
+            if self._check_for_challenge_prompt():
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                    message="Login blocked by challenge/captcha flow",
+                    retryable=False,
+                )
+
             # Check for 2FA prompt
             if self._check_for_2fa_prompt():
                 if not credentials.has_2fa():
-                    raise AuthenticationError(
-                        "2FA required but no TOTP secret provided. "
-                        f"Set the {ENV_TOTP_SECRET} environment variable."
+                    return self._build_auth_result(
+                        started_at=started_at,
+                        outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                        message=(
+                            "2FA required but no TOTP secret provided. "
+                            f"Set the {ENV_TOTP_SECRET} environment variable."
+                        ),
+                        retryable=False,
                     )
                 self._handle_2fa(credentials.totp_secret)  # type: ignore[arg-type]
 
@@ -383,19 +481,60 @@ class RobloxAuth:
                 logger.info("Login successful")
                 if save_session:
                     self.save_session()
-                return True
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.SUCCESS,
+                    message="Login successful",
+                    retryable=False,
+                )
 
             # Check for error messages
             error_msg = self._get_login_error()
             if error_msg:
-                raise AuthenticationError(f"Login failed: {error_msg}")
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.INVALID_CREDENTIALS,
+                    message=f"Login failed: {error_msg}",
+                    retryable=False,
+                )
 
-            raise AuthenticationError("Login failed: Unknown error")
+            return self._build_auth_result(
+                started_at=started_at,
+                outcome=AuthOutcome.UNKNOWN_FAILURE,
+                message="Login failed: Unknown error",
+                retryable=True,
+            )
 
-        except AuthenticationError:
-            raise
+        except AuthenticationError as e:
+            return self._build_auth_result(
+                started_at=started_at,
+                outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                message=str(e),
+                retryable=False,
+            )
         except Exception as e:
-            raise AuthenticationError(f"Login failed: {e}") from e
+            message = self._compact_exception_message(str(e))
+            lowered = message.lower()
+            if self._check_for_challenge_prompt():
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.CHALLENGE_BLOCKED,
+                    message="Login blocked by challenge/captcha flow",
+                    retryable=False,
+                )
+            if "timeout" in lowered or "timed out" in lowered:
+                return self._build_auth_result(
+                    started_at=started_at,
+                    outcome=AuthOutcome.NETWORK_TIMEOUT,
+                    message=f"Login timed out: {message}",
+                    retryable=True,
+                )
+            return self._build_auth_result(
+                started_at=started_at,
+                outcome=AuthOutcome.UNKNOWN_FAILURE,
+                message=f"Login failed: {message}",
+                retryable=True,
+            )
 
     def _check_for_2fa_prompt(self) -> bool:
         """Check if 2FA prompt is displayed.
@@ -421,6 +560,80 @@ class RobloxAuth:
                     return True
             except Exception:
                 pass
+
+        return False
+
+    def _check_for_challenge_prompt(self) -> bool:
+        """Check if a challenge/captcha page is blocking authentication."""
+        try:
+            content = self.page.content().lower()
+        except Exception:
+            return False
+
+        challenge_markers = ("captcha", "verify you are human", "security challenge")
+        if any(marker in content for marker in challenge_markers):
+            logger.warning("Challenge/captcha prompt detected")
+            return True
+        return False
+
+    def click_login_button(self) -> bool:
+        """Attempt to click login/submit with resilient fallbacks."""
+        button = self._first_available_locator(LOGIN_BUTTON_SELECTORS)
+        if button is not None:
+            try:
+                primary = getattr(button, "first", button)
+                primary.click(timeout=2000)
+                logger.info("[AUTH] Clicked login button from external control command.")
+                return True
+            except Exception as exc:
+                logger.warning("[AUTH] Locator click for login button failed: %s", exc)
+
+        try:
+            clicked_via_js = bool(
+                self.page.evaluate(
+                    """
+                    () => {
+                      const selectors = [
+                        'button[type="submit"]',
+                        'button[id="login-button"]',
+                        'button[aria-label*="Log"]',
+                        'button[aria-label*="Sign"]',
+                        'button'
+                      ];
+                      for (const sel of selectors) {
+                        const elements = Array.from(document.querySelectorAll(sel));
+                        for (const el of elements) {
+                          const text = (el.innerText || '').toLowerCase();
+                          if (text.includes('log in') || text.includes('login') || text.includes('sign in')) {
+                            el.click();
+                            return true;
+                          }
+                        }
+                      }
+                      const form = document.querySelector('form');
+                      if (form && typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                        return true;
+                      }
+                      return false;
+                    }
+                    """
+                )
+            )
+            if clicked_via_js:
+                logger.info("[AUTH] Triggered login submit via JS fallback.")
+                return True
+        except Exception as exc:
+            logger.warning("[AUTH] JS submit fallback failed: %s", exc)
+
+        keyboard = getattr(self.page, "keyboard", None)
+        if keyboard is not None:
+            try:
+                keyboard.press("Enter")
+                logger.info("[AUTH] Triggered Enter-key fallback for login submit.")
+                return True
+            except Exception as exc:
+                logger.warning("[AUTH] Enter-key fallback failed: %s", exc)
 
         return False
 
@@ -520,10 +733,35 @@ class RobloxAuth:
         logger.info("Session expired, re-authenticating")
 
         # Try to login
-        if self._credentials:
-            return self.login(self._credentials)
-        else:
-            return self.login()
+        result = self.login(self._credentials) if self._credentials else self.login()
+
+        if result.outcome == AuthOutcome.SUCCESS:
+            return True
+
+        raise AuthenticationError(f"Re-authentication failed ({result.outcome}): {result.message}")
+
+    def _build_auth_result(
+        self,
+        *,
+        started_at: float,
+        outcome: AuthOutcome,
+        message: str,
+        retryable: bool,
+    ) -> AuthResult:
+        """Construct a consistent AuthResult with latency metadata."""
+        return AuthResult(
+            outcome=outcome,
+            message=message,
+            retryable=retryable,
+            latency_ms=(time.time() - started_at) * 1000,
+        )
+
+    def _compact_exception_message(self, message: str) -> str:
+        """Keep the first line of noisy browser exceptions for readable logs."""
+        first = message.strip().splitlines()
+        if not first:
+            return "Unknown error"
+        return first[0].strip()
 
     def get_storage_state_path(self) -> Path | None:
         """Get path to storage state file if it exists.

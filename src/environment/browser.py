@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -51,6 +52,7 @@ class BrowserRuntime:
         viewport_width: int = 1920,
         viewport_height: int = 1080,
         user_agent: str | None = None,
+        storage_state_path: str | Path | None = None,
     ) -> None:
         """Initialize browser runtime.
 
@@ -65,6 +67,7 @@ class BrowserRuntime:
         self._viewport_width = viewport_width
         self._viewport_height = viewport_height
         self._user_agent = user_agent
+        self._storage_state_path = Path(storage_state_path) if storage_state_path else None
 
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
@@ -81,6 +84,11 @@ class BrowserRuntime:
     def page(self) -> Page | None:
         """Get the current page object for advanced operations."""
         return self._page
+
+    @property
+    def is_headless(self) -> bool:
+        """Return whether browser runtime is configured for headless mode."""
+        return self._headless
 
     def start(self) -> None:
         """Start the browser.
@@ -117,6 +125,8 @@ class BrowserRuntime:
             }
             if self._user_agent:
                 context_options["user_agent"] = self._user_agent
+            if self._storage_state_path is not None and self._storage_state_path.exists():
+                context_options["storage_state"] = str(self._storage_state_path)
 
             self._context = self._browser.new_context(**context_options)
             self._page = self._context.new_page()
@@ -187,7 +197,7 @@ class BrowserRuntime:
         except Exception as e:
             raise BrowserRuntimeError(f"Navigation to {url} failed: {e}") from e
 
-    def screenshot(self, full_page: bool = False) -> bytes:
+    def screenshot(self, full_page: bool = False, timeout_ms: int = 30000) -> bytes:
         """Take a screenshot of the current page.
 
         Args:
@@ -204,10 +214,85 @@ class BrowserRuntime:
             raise BrowserRuntimeError("Browser not running. Call start() first.")
 
         try:
-            result: bytes = self._page.screenshot(full_page=full_page)
+            result: bytes = self._page.screenshot(full_page=full_page, timeout=timeout_ms)
             return result
         except Exception as e:
             raise BrowserRuntimeError(f"Screenshot failed: {e}") from e
+
+    def screenshot_with_recovery(
+        self,
+        full_page: bool = False,
+        timeout_ms: int = 30000,
+        page_retry_budget: int = 1,
+        context_retry_budget: int = 1,
+    ) -> bytes:
+        """Take a screenshot with bounded page/context recovery attempts."""
+        page_attempt = 0
+        while page_attempt <= page_retry_budget:
+            try:
+                return self.screenshot(full_page=full_page, timeout_ms=timeout_ms)
+            except BrowserRuntimeError:
+                if page_attempt >= page_retry_budget:
+                    break
+                page_attempt += 1
+                logger.warning(
+                    "Screenshot failed, attempting page recovery (%s/%s)",
+                    page_attempt,
+                    page_retry_budget,
+                )
+                self.recover_page()
+
+        context_attempt = 0
+        while context_attempt <= context_retry_budget:
+            try:
+                return self.screenshot(full_page=full_page, timeout_ms=timeout_ms)
+            except BrowserRuntimeError:
+                if context_attempt >= context_retry_budget:
+                    break
+                context_attempt += 1
+                logger.warning(
+                    "Screenshot still failing, attempting context recovery (%s/%s)",
+                    context_attempt,
+                    context_retry_budget,
+                )
+                self.recover_context()
+
+        raise BrowserRuntimeError(
+            "Screenshot failed after page/context recovery attempts"
+        )
+
+    def recover_page(self) -> None:
+        """Recover by rotating the current page inside the existing context."""
+        if self._context is None:
+            raise BrowserRuntimeError("Browser context unavailable for page recovery")
+
+        if self._page is not None:
+            with contextlib.suppress(Exception):
+                self._page.close()
+        self._page = self._context.new_page()
+
+    def recover_context(self) -> None:
+        """Recover by recreating browser context and page."""
+        if self._browser is None:
+            raise BrowserRuntimeError("Browser not running; cannot recover context")
+
+        if self._context is not None:
+            with contextlib.suppress(Exception):
+                self._context.close()
+
+        context_options: dict[str, Any] = {
+            "viewport": {
+                "width": self._viewport_width,
+                "height": self._viewport_height,
+            },
+        }
+        if self._user_agent:
+            context_options["user_agent"] = self._user_agent
+        if self._storage_state_path is not None and self._storage_state_path.exists():
+            context_options["storage_state"] = str(self._storage_state_path)
+
+        self._context = self._browser.new_context(**context_options)
+        self._page = self._context.new_page()
 
     def screenshot_pil(self, full_page: bool = False) -> Image.Image:
         """Take a screenshot and return as PIL Image.

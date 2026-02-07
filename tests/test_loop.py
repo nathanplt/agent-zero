@@ -234,6 +234,94 @@ class TestAgentLoopInitialization:
         assert loop.state == LoopState.STOPPED
 
 
+class TestAgentLoopDecisionMetrics:
+    """Decision metrics should reflect policy-vs-LLM source accurately."""
+
+    def test_policy_decision_does_not_increment_llm_counter(self) -> None:
+        from src.interfaces.actions import Action as InterfaceAction
+        from src.interfaces.actions import ActionResult as InterfaceActionResult
+        from src.interfaces.actions import ActionType as InterfaceActionType
+        from src.models.actions import Action as ModelAction
+        from src.models.decisions import Decision
+
+        pipeline = MagicMock()
+        pipeline.observe.return_value = MockObservation()
+        engine = MagicMock()
+        engine.decide.return_value = Decision(
+            reasoning="Policy says wait.",
+            action=ModelAction.wait(duration_ms=1000),
+            confidence=0.9,
+            expected_outcome="Observe resource growth.",
+            context={"decision_source": "policy"},
+        )
+        executor = MagicMock()
+        executor.execute.return_value = InterfaceActionResult(
+            success=True,
+            action=InterfaceAction(
+                action_type=InterfaceActionType.WAIT,
+                parameters={"duration_ms": 1000},
+            ),
+            duration_ms=2.0,
+        )
+
+        loop = AgentLoop(
+            observation_pipeline=pipeline,
+            decision_engine=engine,
+            action_executor=executor,
+            config=LoopConfig(enable_signal_handlers=False),
+        )
+
+        loop._run_iteration()  # noqa: SLF001
+
+        metrics = loop.metrics.get_metrics()
+        assert metrics.llm_calls_decision == 0
+
+    def test_llm_decision_increments_llm_counter(self) -> None:
+        from src.interfaces.actions import Action as InterfaceAction
+        from src.interfaces.actions import ActionResult as InterfaceActionResult
+        from src.interfaces.actions import ActionType as InterfaceActionType
+        from src.models.actions import Action as ModelAction
+        from src.models.actions import Point
+        from src.models.decisions import Decision
+
+        pipeline = MagicMock()
+        pipeline.observe.return_value = MockObservation()
+        engine = MagicMock()
+        engine.decide.return_value = Decision(
+            reasoning="LLM says click.",
+            action=ModelAction(
+                type=InterfaceActionType.CLICK,
+                target=Point(x=10, y=10),
+                parameters={"button": "left"},
+                description="Click starter button",
+            ),
+            confidence=0.7,
+            expected_outcome="Progress increases.",
+            context={"decision_source": "llm"},
+        )
+        executor = MagicMock()
+        executor.execute.return_value = InterfaceActionResult(
+            success=True,
+            action=InterfaceAction(
+                action_type=InterfaceActionType.CLICK,
+                parameters={"button": "left"},
+            ),
+            duration_ms=2.0,
+        )
+
+        loop = AgentLoop(
+            observation_pipeline=pipeline,
+            decision_engine=engine,
+            action_executor=executor,
+            config=LoopConfig(enable_signal_handlers=False),
+        )
+
+        loop._run_iteration()  # noqa: SLF001
+
+        metrics = loop.metrics.get_metrics()
+        assert metrics.llm_calls_decision == 1
+
+
 class TestAgentLoopStartStop:
     """Tests for AgentLoop start/stop functionality."""
 

@@ -520,6 +520,178 @@ class TestLoginFlow:
         # Should have checked 2FA twice (once in login, once in _handle_2fa)
         assert twofa_calls[0] >= 1
 
+    def test_login_returns_success_result(self, auth, monkeypatch):
+        """Login should report SUCCESS outcome when authenticated."""
+        from src.environment.auth import AuthOutcome
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "testpass")
+
+        auth_calls = [0]
+
+        def mock_is_authenticated():
+            auth_calls[0] += 1
+            return auth_calls[0] > 1
+
+        auth.is_authenticated = mock_is_authenticated
+        auth._check_for_2fa_prompt = MagicMock(return_value=False)
+        mock_input = MagicMock()
+        mock_input.count.return_value = 1
+        auth._browser.page.locator.return_value = mock_input
+
+        result = auth.login()
+
+        assert result.outcome == AuthOutcome.SUCCESS
+        assert result.retryable is False
+
+    def test_login_timeout_maps_to_network_timeout(self, auth, monkeypatch):
+        """Playwright timeouts should map to NETWORK_TIMEOUT outcome."""
+        from src.environment.auth import AuthOutcome
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "testpass")
+        auth._browser.page.goto.side_effect = TimeoutError("goto timed out")
+
+        result = auth.login()
+
+        assert result.outcome == AuthOutcome.NETWORK_TIMEOUT
+        assert result.retryable is True
+        assert "timed out" in result.message.lower()
+
+    def test_login_timeout_with_challenge_maps_to_challenge_blocked(self, auth, monkeypatch):
+        """Timeouts caused by challenge overlays should classify as CHALLENGE_BLOCKED."""
+        from src.environment.auth import AuthOutcome
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "testpass")
+        auth.is_authenticated = MagicMock(return_value=False)
+        auth._check_for_2fa_prompt = MagicMock(return_value=False)
+        auth._check_for_challenge_prompt = MagicMock(return_value=True)
+
+        username_locator = MagicMock()
+        username_locator.count.return_value = 1
+        username_locator.fill.side_effect = TimeoutError("fill timed out")
+        auth._browser.page.locator.return_value = username_locator
+
+        result = auth.login()
+
+        assert result.outcome == AuthOutcome.CHALLENGE_BLOCKED
+        assert result.retryable is False
+
+    def test_login_invalid_credentials_maps_to_invalid_credentials(self, auth, monkeypatch):
+        """Known login errors should map to INVALID_CREDENTIALS outcome."""
+        from src.environment.auth import AuthOutcome
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "badpass")
+        auth.is_authenticated = MagicMock(return_value=False)
+        auth._check_for_2fa_prompt = MagicMock(return_value=False)
+        auth._get_login_error = MagicMock(return_value="Invalid username or password")
+        mock_input = MagicMock()
+        mock_input.count.return_value = 1
+        auth._browser.page.locator.return_value = mock_input
+
+        result = auth.login()
+
+        assert result.outcome == AuthOutcome.INVALID_CREDENTIALS
+        assert result.retryable is False
+
+    def test_login_challenge_maps_to_challenge_blocked(self, auth, monkeypatch):
+        """Captcha/challenge pages should map to CHALLENGE_BLOCKED."""
+        from src.environment.auth import AuthOutcome
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "testpass")
+        auth.is_authenticated = MagicMock(return_value=False)
+        auth._check_for_2fa_prompt = MagicMock(return_value=False)
+        auth._check_for_challenge_prompt = MagicMock(return_value=True)
+        mock_input = MagicMock()
+        mock_input.count.return_value = 1
+        auth._browser.page.locator.return_value = mock_input
+
+        result = auth.login()
+
+        assert result.outcome == AuthOutcome.CHALLENGE_BLOCKED
+        assert result.retryable is False
+
+    def test_login_does_not_navigate_away_from_login_page(self, auth, monkeypatch):
+        """Login flow should not redirect itself away from /login before form fill."""
+        from src.environment.auth import ROBLOX_HOME, ROBLOX_LOGIN
+
+        monkeypatch.setenv("ROBLOX_USERNAME", "testuser")
+        monkeypatch.setenv("ROBLOX_PASSWORD", "testpass")
+
+        def locator_for(selector):
+            loc = MagicMock()
+            if "user-menu" in selector or "avatar-card-link" in selector:
+                loc.count.return_value = 0
+            elif 'a[href*="/login"]' in selector or "login-button" in selector or "input[name=\"username\"]" in selector or "input[name=\"password\"]" in selector or "button[type=\"submit\"]" in selector:
+                loc.count.return_value = 1
+            else:
+                loc.count.return_value = 0
+            return loc
+
+        auth._browser.page.locator.side_effect = locator_for
+        auth._get_login_error = MagicMock(return_value="Invalid username or password")
+        auth._check_for_2fa_prompt = MagicMock(return_value=False)
+        auth._check_for_challenge_prompt = MagicMock(return_value=False)
+
+        auth.login()
+
+        goto_urls = [call.args[0] for call in auth._browser.page.goto.call_args_list]
+        assert ROBLOX_LOGIN in goto_urls
+        assert ROBLOX_HOME not in goto_urls
+
+    def test_click_login_button_returns_true_when_button_present(self, auth) -> None:
+        """Manual login click should trigger submit when button exists."""
+        button = MagicMock()
+        button.count.return_value = 1
+        auth._browser.page.locator.return_value = button
+
+        result = auth.click_login_button()
+
+        assert result is True
+        button.first.click.assert_called_once()
+
+    def test_click_login_button_returns_false_when_all_fallbacks_fail(self, auth) -> None:
+        """Manual login click should fail only when all fallback paths fail."""
+        missing = MagicMock()
+        missing.count.return_value = 0
+        auth._browser.page.locator.return_value = missing
+        auth._browser.page.evaluate.side_effect = RuntimeError("js blocked")
+        auth._browser.page.keyboard = MagicMock()
+        auth._browser.page.keyboard.press.side_effect = RuntimeError("key blocked")
+
+        result = auth.click_login_button()
+
+        assert result is False
+
+    def test_click_login_button_falls_back_to_javascript_submit(self, auth) -> None:
+        """If locator click fails, JS fallback should still submit login."""
+        button = MagicMock()
+        button.count.return_value = 1
+        button.first.click.side_effect = RuntimeError("strict mode violation")
+        auth._browser.page.locator.return_value = button
+        auth._browser.page.evaluate.return_value = True
+
+        result = auth.click_login_button()
+
+        assert result is True
+        auth._browser.page.evaluate.assert_called_once()
+
+    def test_click_login_button_falls_back_to_enter_key(self, auth) -> None:
+        """If button/JS fail, Enter key fallback should be attempted."""
+        missing = MagicMock()
+        missing.count.return_value = 0
+        auth._browser.page.locator.return_value = missing
+        auth._browser.page.evaluate.return_value = False
+        auth._browser.page.keyboard = MagicMock()
+
+        result = auth.click_login_button()
+
+        assert result is True
+        auth._browser.page.keyboard.press.assert_called_once_with("Enter")
+
 
 class TestSecurityConsiderations:
     """Tests for security requirements."""

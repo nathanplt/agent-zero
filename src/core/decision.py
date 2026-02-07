@@ -52,6 +52,7 @@ DEFAULT_MODELS = {
     "anthropic": "claude-3-haiku-20240307",  # Faster for decisions
     "openai": "gpt-4-turbo-preview",
 }
+DEFAULT_WAIT_DURATION_MS = 1000
 
 
 class DecisionEngineError(Exception):
@@ -534,7 +535,14 @@ class DecisionEngine:
         if target_data and isinstance(target_data, dict):
             target = Point(int(target_data.get("x", 0)), int(target_data.get("y", 0)))
 
-        parameters = action_data.get("parameters", {})
+        raw_parameters = action_data.get("parameters", {})
+        parameters: dict[str, Any] = (
+            dict(raw_parameters) if isinstance(raw_parameters, dict) else {}
+        )
+
+        if action_type == ActionType.WAIT:
+            parameters["duration_ms"] = self._normalize_wait_duration(parameters)
+
         description = action_data.get("description", "")
 
         # Create model action (Pydantic)
@@ -564,6 +572,18 @@ class DecisionEngine:
                 "observation_confidence": observation.confidence,
             },
         )
+
+    @staticmethod
+    def _normalize_wait_duration(parameters: dict[str, Any]) -> int:
+        """Return a safe positive wait duration from action parameters."""
+        raw = parameters.get("duration_ms")
+        try:
+            duration = int(float(raw))
+        except (TypeError, ValueError):
+            return DEFAULT_WAIT_DURATION_MS
+        if duration <= 0:
+            return DEFAULT_WAIT_DURATION_MS
+        return duration
 
     def create_fallback_decision(
         self,

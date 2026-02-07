@@ -9,6 +9,8 @@ This package provides implementations for managing the execution environment:
 
 from src.environment.auth import (
     AuthenticationError,
+    AuthOutcome,
+    AuthResult,
     Credentials,
     RobloxAuth,
     generate_totp_code,
@@ -19,6 +21,8 @@ from src.environment.manager import LocalEnvironmentManager
 
 __all__ = [
     "AuthenticationError",
+    "AuthOutcome",
+    "AuthResult",
     "BrowserRuntime",
     "Credentials",
     "LocalEnvironmentManager",

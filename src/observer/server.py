@@ -22,12 +22,20 @@ LIVE_PAGE_HTML = """<!doctype html>
     body { font-family: sans-serif; margin: 0; padding: 1rem; background: #111; color: #eee; }
     .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
     .panel { background: #1a1a1a; border: 1px solid #2f2f2f; border-radius: 8px; padding: 0.75rem; }
+    .toolbar { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
+    button { border: 1px solid #3a7afe; background: #2458d0; color: #fff; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; }
+    button:hover { background: #2e66e2; }
+    .status { font-size: 12px; color: #9ec5ff; }
     img { width: 100%; border-radius: 6px; border: 1px solid #333; background: #000; }
     pre { white-space: pre-wrap; max-height: 70vh; overflow-y: auto; font-size: 12px; }
   </style>
 </head>
 <body>
   <h2>Agent Zero Live Observer</h2>
+  <div class="toolbar">
+    <button id="clickLogin" type="button">Click Login In Agent Session</button>
+    <div class="status" id="status">Waiting for agent events...</div>
+  </div>
   <div class="grid">
     <div class="panel">
       <h3>Screen</h3>
@@ -41,6 +49,8 @@ LIVE_PAGE_HTML = """<!doctype html>
   <script>
     const logsEl = document.getElementById("logs");
     const screenEl = document.getElementById("screen");
+    const statusEl = document.getElementById("status");
+    const clickLoginBtn = document.getElementById("clickLogin");
 
     const screenProto = location.protocol === "https:" ? "wss" : "ws";
     const screenWs = new WebSocket(`${screenProto}://${location.host}/ws/screen`);
@@ -54,7 +64,36 @@ LIVE_PAGE_HTML = """<!doctype html>
     const logsWs = new WebSocket(`${screenProto}://${location.host}/ws/logs`);
     logsWs.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
+      const payload = data.payload || {};
+      if (payload.event === "auth_manual_wait") {
+        statusEl.textContent = `Auth challenge pending (${payload.elapsed_seconds || 0}s)...`;
+      } else if (payload.event === "auth_result" && payload.outcome === "SUCCESS") {
+        statusEl.textContent = "Authentication succeeded.";
+      } else if (payload.event === "auth_click_login_request") {
+        statusEl.textContent = "Login click requested...";
+      } else if (payload.event === "auth_click_login_executed") {
+        statusEl.textContent = "Login clicked in agent session.";
+      } else if (payload.event === "auth_click_login_not_found") {
+        statusEl.textContent = "Login button not found in current agent page.";
+      } else if (payload.event === "auth_started") {
+        statusEl.textContent = "Authenticating...";
+      }
       logsEl.textContent = `${JSON.stringify(data)}\\n` + logsEl.textContent;
+    };
+
+    clickLoginBtn.onclick = async () => {
+      clickLoginBtn.disabled = true;
+      statusEl.textContent = "Requesting login click in agent session...";
+      try {
+        const res = await fetch("/control/auth/click-login", { method: "POST" });
+        if (!res.ok) {
+          statusEl.textContent = `Login click request failed (${res.status})`;
+        }
+      } catch (err) {
+        statusEl.textContent = "Login click request failed";
+      } finally {
+        setTimeout(() => { clickLoginBtn.disabled = false; }, 800);
+      }
     };
   </script>
 </body>
@@ -135,5 +174,13 @@ def create_app(
             logger.debug("Logs WebSocket client disconnected")
         except Exception as e:
             logger.warning("Logs stream error: %s", e)
+
+    @app.post("/control/auth/click-login")
+    async def auth_click_login() -> dict[str, object]:
+        command_id = action_svc.push_control_command("auth_click_login")
+        event_id = action_svc.push_event(
+            {"event": "auth_click_login_request", "command_id": command_id}
+        )
+        return {"ok": True, "command_id": command_id, "event_id": event_id}
 
     return app

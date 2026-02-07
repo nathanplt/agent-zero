@@ -348,6 +348,43 @@ class TestDecisionEngineParsing:
         assert decision.action.type == ActionType.WAIT
         assert decision.action.target is None
 
+    def test_parse_wait_without_duration_adds_default(self, engine, mock_observation):
+        """Wait actions without duration should get a safe default."""
+        response = json.dumps({
+            "thought": "No safe click available",
+            "action": {
+                "type": "wait",
+                "target": None,
+                "parameters": {},
+                "description": "Wait",
+            },
+            "confidence": 0.7,
+            "expected_outcome": "State stabilizes",
+        })
+
+        decision = engine._parse_response(response, mock_observation)
+
+        assert decision.action.type == ActionType.WAIT
+        assert decision.action.parameters.get("duration_ms") == 1000
+
+    def test_parse_unknown_action_defaults_to_wait_with_duration(self, engine, mock_observation):
+        """Unknown actions should degrade to a valid wait action."""
+        response = json.dumps({
+            "thought": "Try unsupported action",
+            "action": {
+                "type": "unsupported",
+                "parameters": {},
+                "description": "Unknown action",
+            },
+            "confidence": 0.5,
+            "expected_outcome": "No-op",
+        })
+
+        decision = engine._parse_response(response, mock_observation)
+
+        assert decision.action.type == ActionType.WAIT
+        assert decision.action.parameters.get("duration_ms") == 1000
+
     def test_parse_invalid_json(self, engine, mock_observation):
         """Should raise error for invalid JSON."""
         response = "This is not JSON"

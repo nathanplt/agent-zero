@@ -385,7 +385,12 @@ class AgentLoop:
         dec_start = time.time()
         decision = self._decision_engine.decide(observation)
         dec_duration = (time.time() - dec_start) * 1000
-        self._metrics.record_decision(dec_duration, llm_used=True)
+        decision_context = getattr(decision, "context", {})
+        if not isinstance(decision_context, dict):
+            decision_context = {}
+        decision_source = decision_context.get("decision_source")
+        llm_used = decision_source != "policy"
+        self._metrics.record_decision(dec_duration, llm_used=llm_used)
         self._last_decision = decision
         logger.debug(
             f"Decision: {decision.action.type} "
@@ -504,10 +509,23 @@ class AgentLoop:
         self._last_observation = observation
         self._metrics.record_observation(observation.duration_ms, observation.llm_used)
 
+        dec_start = time.time()
         decision = self._decision_engine.decide(observation)
+        dec_duration = (time.time() - dec_start) * 1000
         self._last_decision = decision
+        decision_context = getattr(decision, "context", {})
+        if not isinstance(decision_context, dict):
+            decision_context = {}
+        decision_source = decision_context.get("decision_source")
+        llm_used = decision_source != "policy"
+        self._metrics.record_decision(dec_duration, llm_used=llm_used)
 
-        _action, result = self._execute_action(decision)
+        action, result = self._execute_action(decision)
         self._metrics.record_action(result.success, result.duration_ms)
+        self._decision_engine.record_action_result(
+            action,
+            result.success,
+            outcome=result.error or "success",
+        )
 
         return observation, decision, result

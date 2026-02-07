@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.environment.browser import BrowserRuntime, BrowserRuntimeError
@@ -51,6 +52,8 @@ class LocalEnvironmentManager(EnvironmentManager):
         viewport_height: int = 1080,
         display: str = ":99",
         auto_restart: bool = False,
+        storage_state_path: str | Path | None = None,
+        use_virtual_display: bool = True,
     ) -> None:
         """Initialize the environment manager.
 
@@ -66,6 +69,8 @@ class LocalEnvironmentManager(EnvironmentManager):
         self._viewport_height = viewport_height
         self._display_number = display
         self._auto_restart = auto_restart
+        self._storage_state_path = storage_state_path
+        self._use_virtual_display = use_virtual_display
 
         self._display: VirtualDisplay | None = None
         self._browser: BrowserRuntime | None = None
@@ -92,6 +97,7 @@ class LocalEnvironmentManager(EnvironmentManager):
             headless=self._headless,
             viewport_width=self._viewport_width,
             viewport_height=self._viewport_height,
+            storage_state_path=self._storage_state_path,
         )
 
     def start(self) -> None:
@@ -110,15 +116,17 @@ class LocalEnvironmentManager(EnvironmentManager):
             logger.info("Starting environment...")
 
             # Create components if needed
-            if self._display is None:
+            if self._use_virtual_display and self._display is None:
                 self._display = self._create_display()
             if self._browser is None:
                 self._browser = self._create_browser()
 
             # Start virtual display if not in headless mode
-            if not self._headless:
+            if not self._headless and self._use_virtual_display:
                 logger.info("Starting virtual display...")
                 self._display.start()
+            elif not self._headless:
+                logger.info("Using native desktop display (virtual display disabled)")
 
             # Start browser
             logger.info("Starting browser...")
@@ -183,8 +191,9 @@ class LocalEnvironmentManager(EnvironmentManager):
         """
         # Determine status
         display_active = (
-            self._display is not None
-            and (self._display.is_running or self._headless)
+            self._headless
+            or not self._use_virtual_display
+            or (self._display is not None and self._display.is_running)
         )
         browser_active = (
             self._browser is not None
@@ -212,8 +221,9 @@ class LocalEnvironmentManager(EnvironmentManager):
                     self.restart()
                     # Check if restart worked
                     display_active = (
-                        self._display is not None
-                        and (self._display.is_running or self._headless)
+                        self._headless
+                        or not self._use_virtual_display
+                        or (self._display is not None and self._display.is_running)
                     )
                     browser_active = (
                         self._browser is not None
@@ -257,6 +267,9 @@ class LocalEnvironmentManager(EnvironmentManager):
             raise EnvironmentSetupError("Browser not initialized")
 
         try:
+            result = self._browser.screenshot_with_recovery()
+            if isinstance(result, bytes):
+                return result
             return self._browser.screenshot()
         except BrowserRuntimeError as e:
             raise EnvironmentSetupError(f"Screenshot failed: {e}") from e
@@ -309,6 +322,7 @@ class LocalEnvironmentManager(EnvironmentManager):
         """
         display_ok = (
             self._headless
+            or not self._use_virtual_display
             or (self._display is not None and self._display.is_running)
         )
         browser_ok = self._browser is not None and self._browser.is_running
@@ -343,6 +357,10 @@ class LocalEnvironmentManager(EnvironmentManager):
         if self._display is not None:
             return (self._display.width, self._display.height)
         return (self._viewport_width, self._viewport_height)
+
+    def get_browser_runtime(self) -> BrowserRuntime | None:
+        """Expose browser runtime through a public accessor."""
+        return self._browser
 
     def __enter__(self) -> LocalEnvironmentManager:
         """Context manager entry."""

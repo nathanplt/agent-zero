@@ -93,6 +93,8 @@ class ActionStreamingService:
         self._lock = threading.Lock()
         self._events: deque[dict[str, Any]] = deque(maxlen=self._max_events)
         self._next_id = 1
+        self._control_commands: deque[dict[str, Any]] = deque(maxlen=self._max_events)
+        self._next_control_id = 1
 
     def push_event(self, payload: dict[str, Any]) -> int:
         """Push an event payload and return its assigned event id."""
@@ -111,3 +113,31 @@ class ActionStreamingService:
         """Get events with id greater than `last_event_id`."""
         with self._lock:
             return [event for event in self._events if int(event["id"]) > last_event_id]
+
+    def push_control_command(
+        self,
+        command: str,
+        payload: dict[str, Any] | None = None,
+    ) -> int:
+        """Queue a control command for runtime consumers."""
+        with self._lock:
+            command_id = self._next_control_id
+            self._next_control_id += 1
+            entry = {
+                "id": command_id,
+                "timestamp": datetime.now().isoformat(),
+                "command": command,
+                "payload": payload or {},
+            }
+            self._control_commands.append(entry)
+            return command_id
+
+    def pop_control_commands(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Pop queued control commands in FIFO order."""
+        with self._lock:
+            if limit is None or limit <= 0:
+                limit = len(self._control_commands)
+            popped: list[dict[str, Any]] = []
+            while self._control_commands and len(popped) < limit:
+                popped.append(self._control_commands.popleft())
+            return popped

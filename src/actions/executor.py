@@ -231,7 +231,12 @@ class GameActionExecutor(ActionExecutor):
 
         elif action.action_type == ActionType.WAIT:
             duration = action.parameters.get("duration_ms")
-            if duration is None or duration < 0:
+            if (
+                duration is None
+                or isinstance(duration, bool)
+                or not isinstance(duration, (int, float))
+                or duration <= 0
+            ):
                 return False, "Wait action requires positive 'duration_ms' parameter"
 
         elif action.action_type == ActionType.MOVE:

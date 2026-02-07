@@ -53,7 +53,6 @@ coverage.xml
 
 # Environments
 .env
-.env_dir_backup_*/
 .venv
 env/
 venv/
@@ -96,6 +95,7 @@ data/
 .env
 .env.*
 !.env.example
+.env_dir_backup_*/
 *.pem
 *.key
 credentials.json
