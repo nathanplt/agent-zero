@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 import threading
 import time
@@ -13,11 +14,13 @@ from typing import TYPE_CHECKING, Any, Protocol
 from src.actions.backend import InputBackend, NullInputBackend, PlaywrightInputBackend
 from src.actions.executor import GameActionExecutor
 from src.config.loader import load_config
+from src.config.secrets import load_environment_secrets
 from src.core.decision import DecisionConfig, DecisionEngine
 from src.core.loop import AgentLoop, LoopConfig
 from src.core.observation import ObservationPipeline, PipelineConfig
 from src.environment.auth import AuthenticationError, Credentials, RobloxAuth
 from src.environment.manager import LocalEnvironmentManager
+from src.interfaces.environment import EnvironmentSetupError
 from src.observer.server import create_app
 from src.observer.streaming import ActionStreamingService, ScreenStreamingService
 from src.vision.capture import ScreenshotCapture
@@ -28,6 +31,15 @@ if TYPE_CHECKING:
     from src.interfaces.vision import Screenshot
 
 logger = logging.getLogger(__name__)
+
+_LLM_PROVIDER_ENV_KEYS: dict[str, str] = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+}
+_RUNTIME_MODEL_DEFAULTS: dict[str, str] = {
+    "anthropic": "claude-3-sonnet-20240229",
+    "openai": "gpt-4o-mini",
+}
 
 
 class ObserverServer(Protocol):
@@ -48,6 +60,15 @@ class _UvicornObserverServer:
     def stop(self) -> None:
         self.server.should_exit = True
         self.thread.join(timeout=5.0)
+
+
+@dataclass(frozen=True)
+class LLMRuntimeConfig:
+    """Resolved LLM runtime settings for this process."""
+
+    provider: str
+    model: str
+    api_key: str | None
 
 
 @dataclass
@@ -192,18 +213,133 @@ def _start_observer_server(
     return _UvicornObserverServer(server=server, thread=thread)
 
 
-def _create_runtime(args: argparse.Namespace) -> AgentRuntime:
-    """Create and initialize a playable runtime from CLI arguments."""
-    config = load_config()
-    _warn_roblox_runtime_constraints()
+def _is_display_start_failure(error: EnvironmentSetupError) -> bool:
+    """Determine whether startup failure is related to virtual display/Xvfb."""
+    message = str(error).lower()
+    display_markers = (
+        "failed to start display",
+        "xvfb",
+        "virtual display",
+        ".x11-unix",
+        "cannot establish any listening sockets",
+    )
+    return any(marker in message for marker in display_markers)
 
-    environment = LocalEnvironmentManager(
+
+def _start_environment(args: argparse.Namespace, config: Any) -> LocalEnvironmentManager:
+    """Start environment, retrying in headless mode when display startup fails."""
+    env = LocalEnvironmentManager(
         headless=bool(args.headless),
         viewport_width=config.environment.display_width,
         viewport_height=config.environment.display_height,
         display=config.environment.virtual_display,
     )
-    environment.start()
+    try:
+        env.start()
+        return env
+    except EnvironmentSetupError as error:
+        if bool(args.headless) or not _is_display_start_failure(error):
+            raise
+        logger.warning(
+            "Display startup failed (%s). Retrying with headless browser mode.", error
+        )
+        fallback = LocalEnvironmentManager(
+            headless=True,
+            viewport_width=config.environment.display_width,
+            viewport_height=config.environment.display_height,
+            display=config.environment.virtual_display,
+        )
+        fallback.start()
+        return fallback
+
+
+def _model_matches_provider(provider: str, model: str) -> bool:
+    """Validate basic provider/model compatibility."""
+    lowered = model.strip().lower()
+    if provider == "anthropic":
+        return "claude" in lowered
+    if provider == "openai":
+        return any(token in lowered for token in ("gpt", "o1", "o3", "o4"))
+    return False
+
+
+def _normalize_runtime_model(provider: str, configured_model: str | None) -> str:
+    """Normalize model so provider/model pairs are valid by default."""
+    fallback = _RUNTIME_MODEL_DEFAULTS[provider]
+    if configured_model is None:
+        return fallback
+
+    if _model_matches_provider(provider, configured_model):
+        return configured_model
+
+    logger.warning(
+        "Configured model '%s' does not look compatible with provider '%s'; "
+        "using '%s' instead.",
+        configured_model,
+        provider,
+        fallback,
+    )
+    return fallback
+
+
+def _resolve_llm_runtime(
+    configured_provider: str,
+    configured_model: str | None,
+) -> LLMRuntimeConfig:
+    """Resolve provider/model/api-key for runtime execution.
+
+    Behavior:
+    - Prefer configured provider when its key exists.
+    - Fallback to the other provider if configured key is missing.
+    - Normalize incompatible model/provider pairs.
+    - If no keys exist, keep configured provider/model and return api_key=None.
+    """
+    provider = configured_provider.strip().lower()
+    if provider not in _LLM_PROVIDER_ENV_KEYS:
+        raise ValueError(f"Unsupported LLM provider: {configured_provider}")
+
+    primary_env = _LLM_PROVIDER_ENV_KEYS[provider]
+    primary_key = os.environ.get(primary_env)
+    if primary_key:
+        model = _normalize_runtime_model(provider, configured_model)
+        return LLMRuntimeConfig(provider=provider, model=model, api_key=primary_key)
+
+    fallback_provider = "openai" if provider == "anthropic" else "anthropic"
+    fallback_env = _LLM_PROVIDER_ENV_KEYS[fallback_provider]
+    fallback_key = os.environ.get(fallback_env)
+    if fallback_key:
+        model = _normalize_runtime_model(fallback_provider, configured_model)
+        logger.warning(
+            "Configured provider '%s' is missing %s; falling back to '%s'.",
+            provider,
+            primary_env,
+            fallback_provider,
+        )
+        return LLMRuntimeConfig(
+            provider=fallback_provider,
+            model=model,
+            api_key=fallback_key,
+        )
+
+    model = _normalize_runtime_model(provider, configured_model)
+    logger.warning(
+        "No LLM API key found (%s or %s). Running policy-only decision mode.",
+        _LLM_PROVIDER_ENV_KEYS["anthropic"],
+        _LLM_PROVIDER_ENV_KEYS["openai"],
+    )
+    return LLMRuntimeConfig(provider=provider, model=model, api_key=None)
+
+
+def _create_runtime(args: argparse.Namespace) -> AgentRuntime:
+    """Create and initialize a playable runtime from CLI arguments."""
+    config = load_config()
+    _warn_roblox_runtime_constraints()
+    llm_runtime = _resolve_llm_runtime(
+        configured_provider=str(config.llm.provider),
+        configured_model=str(config.llm.model) if config.llm.model else None,
+    )
+
+    environment = _start_environment(args, config)
 
     if args.game_url:
         environment.navigate(str(args.game_url))
@@ -225,12 +361,19 @@ def _create_runtime(args: argparse.Namespace) -> AgentRuntime:
     ui_detector = UIDetector()
 
     llm_vision = None
-    try:
-        from src.vision.llm_vision import LLMVision
+    if llm_runtime.api_key is not None:
+        try:
+            from src.vision.llm_vision import LLMVision
 
-        llm_vision = LLMVision(provider=config.llm.provider, model=config.llm.model)
-    except Exception as exc:  # pragma: no cover - optional dependency path
-        logger.warning("LLM vision unavailable (%s); using local extraction only", exc)
+            llm_vision = LLMVision(
+                provider=llm_runtime.provider,
+                model=llm_runtime.model,
+                api_key=llm_runtime.api_key,
+            )
+        except Exception as exc:  # pragma: no cover - optional dependency path
+            logger.warning("LLM vision unavailable (%s); using local extraction only", exc)
+    else:
+        logger.warning("LLM vision disabled because no compatible API key is available.")
 
     pipeline = ObservationPipeline(
         capture=capture,
@@ -242,10 +385,12 @@ def _create_runtime(args: argparse.Namespace) -> AgentRuntime:
 
     decision_engine = DecisionEngine(
         config=DecisionConfig(
-            provider=config.llm.provider,
-            model=config.llm.model,
+            provider=llm_runtime.provider,
+            model=llm_runtime.model,
             policy_enabled=True,
-        )
+            policy_confidence_threshold=(0.0 if llm_runtime.api_key is None else 0.7),
+        ),
+        api_key=llm_runtime.api_key,
     )
 
     backend: InputBackend = NullInputBackend()
@@ -313,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "run":
+            load_environment_secrets()
             return run_command(args)
         raise ValueError(f"Unsupported command: {args.command}")
     except Exception as exc:

@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 
 from src.cli import (
     AgentRuntime,
+    _resolve_llm_runtime,
+    _start_environment,
     build_arg_parser,
     build_credentials_from_args,
     main,
@@ -15,6 +17,7 @@ from src.cli import (
 )
 from src.core.observation import Observation
 from src.interfaces.actions import ActionResult, ActionType
+from src.interfaces.environment import EnvironmentSetupError
 from src.interfaces.vision import Screenshot
 from src.models.actions import Action
 from src.models.decisions import Decision
@@ -100,6 +103,24 @@ class TestCLIRunCommand:
 
         assert code == 1
 
+    def test_main_loads_environment_secrets_before_run(self, monkeypatch) -> None:
+        calls: list[str] = []
+
+        def _load() -> None:
+            calls.append("secrets")
+
+        def _run(_: Namespace) -> int:
+            assert calls == ["secrets"]
+            return 0
+
+        monkeypatch.setattr("src.cli.load_environment_secrets", _load)
+        monkeypatch.setattr("src.cli.run_command", _run)
+
+        code = main(["run"])
+
+        assert code == 0
+        assert calls == ["secrets"]
+
 
 class TestCLICredentials:
     """Credential helper behavior."""
@@ -171,3 +192,137 @@ class TestAgentRuntimeStreaming:
         assert completed == 1
         screen_stream.push_frame.assert_called_once()
         action_stream.push_event.assert_called_once()
+
+
+class TestCLIEnvironmentStartup:
+    """Environment startup fallback behavior."""
+
+    def test_retries_headless_when_display_start_fails(self, monkeypatch) -> None:
+        created: list[object] = []
+
+        class FakeEnv:
+            def __init__(
+                self,
+                *,
+                headless: bool,
+                viewport_width: int,
+                viewport_height: int,
+                display: str,
+            ):
+                _ = (viewport_width, viewport_height, display)
+                self.headless = headless
+                created.append(self)
+
+            def start(self) -> None:
+                if not self.headless:
+                    raise EnvironmentSetupError("Failed to start display: Xvfb failed")
+
+        monkeypatch.setattr("src.cli.LocalEnvironmentManager", FakeEnv)
+
+        args = Namespace(headless=False)
+        cfg = Namespace(
+            environment=Namespace(display_width=1920, display_height=1080, virtual_display=":99")
+        )
+
+        env = _start_environment(args, cfg)
+
+        assert env.headless is True
+        assert len(created) == 2
+        assert created[0].headless is False
+        assert created[1].headless is True
+
+    def test_does_not_retry_on_non_display_error(self, monkeypatch) -> None:
+        class FakeEnv:
+            def __init__(
+                self,
+                *,
+                headless: bool,
+                viewport_width: int,
+                viewport_height: int,
+                display: str,
+            ):
+                _ = (viewport_width, viewport_height, display)
+                self.headless = headless
+
+            def start(self) -> None:
+                raise EnvironmentSetupError("Failed to start browser: boom")
+
+        monkeypatch.setattr("src.cli.LocalEnvironmentManager", FakeEnv)
+
+        args = Namespace(headless=False)
+        cfg = Namespace(
+            environment=Namespace(display_width=1920, display_height=1080, virtual_display=":99")
+        )
+
+        try:
+            _start_environment(args, cfg)
+            raise AssertionError("Expected EnvironmentSetupError")
+        except EnvironmentSetupError as exc:
+            assert "Failed to start browser" in str(exc)
+
+
+class TestCLILLMRuntimeResolution:
+    """Provider/model/key resolution behavior."""
+
+    def test_uses_configured_provider_when_key_available(
+        self,
+        monkeypatch,
+    ) -> None:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic-key")
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        resolved = _resolve_llm_runtime(
+            configured_provider="anthropic",
+            configured_model="claude-3-sonnet-20240229",
+        )
+
+        assert resolved.provider == "anthropic"
+        assert resolved.model == "claude-3-sonnet-20240229"
+        assert resolved.api_key == "anthropic-key"
+
+    def test_falls_back_to_openai_when_configured_provider_key_missing(
+        self,
+        monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
+
+        resolved = _resolve_llm_runtime(
+            configured_provider="anthropic",
+            configured_model="claude-3-sonnet-20240229",
+        )
+
+        assert resolved.provider == "openai"
+        assert resolved.api_key == "openai-key"
+        assert "gpt" in str(resolved.model).lower()
+
+    def test_corrects_mismatched_model_for_openai_provider(
+        self,
+        monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
+
+        resolved = _resolve_llm_runtime(
+            configured_provider="openai",
+            configured_model="claude-3-sonnet-20240229",
+        )
+
+        assert resolved.provider == "openai"
+        assert resolved.api_key == "openai-key"
+        assert "gpt" in str(resolved.model).lower()
+
+    def test_returns_none_api_key_when_no_provider_keys_available(
+        self,
+        monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        resolved = _resolve_llm_runtime(
+            configured_provider="anthropic",
+            configured_model="claude-3-sonnet-20240229",
+        )
+
+        assert resolved.provider == "anthropic"
+        assert resolved.api_key is None

@@ -59,6 +59,14 @@ make test
 # Run all checks (lint + typecheck + test)
 make check
 
+# Configure secrets (never commit .env)
+cp .env.example .env
+chmod 600 .env
+# Then edit .env and set OPENAI_API_KEY
+
+# Optional: point to a custom dotenv file path
+# export AGENTZERO_ENV_FILE=/absolute/path/to/.env
+
 # Run agent with live observer page
 agent-zero run \
   --game-url "https://www.roblox.com/games/18408132742/Money-Clicker-Incremental" \
